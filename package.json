@@ -1,0 +1,30 @@
+{
+  "name": "monorepo",
+  "version": "1.0.0",
+  "description": "imports the whole system w/ test and deploy scripts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charonAMM/monoRepo.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/charonAMM/monoRepo/issues"
+  },
+  "homepage": "https://github.com/charonAMM/monoRepo#readme",
+  "devDependencies": {
+    "hardhat": "^2.12.3"
+  },
+  "dependencies": {
+    "charonAMM": "github:charonAMM/charonAMM",
+    "dotenv": "^16.0.2",
+    "feeContract": "github:charonAMM/feeContract",
+    "incentiveToken": "github:charonAMM/incentiveToken",
+    "usingtellor": "^5.0.0",
+    "web3": "^1.7.5"
+  }
+}
