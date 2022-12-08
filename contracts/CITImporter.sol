@@ -3,4 +3,8 @@ pragma solidity 0.8.17;
 
 import "incentiveToken/contracts/Auction.sol";
 
-contract Importer {}
+/**
+ @title CITImporter
+ @dev imports the charonAMM incentive token contract for deployment and system testing
+ **/
+contract CITImporter {}

@@ -4,7 +4,11 @@
   "description": "imports the whole system w/ test and deploy scripts",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "circuit": "./scripts/buildCircuit.sh 2 && ./scripts/buildCircuit.sh 16",
+    "compile": "npx hardhat compile && yarn compile:hasher",
+    "compile:hasher": "npx hardhat hasher",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run circuit && npm run compile"
   },
   "repository": {
     "type": "git",
@@ -21,6 +25,7 @@
   },
   "dependencies": {
     "charonAMM": "github:charonAMM/charonAMM",
+    "circomlibjs": "^0.1.7",
     "dotenv": "^16.0.2",
     "feeContract": "github:charonAMM/feeContract",
     "incentiveToken": "github:charonAMM/incentiveToken",
