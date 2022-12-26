@@ -42,23 +42,28 @@ const config = {
   },
   networks: {
     hardhat: {
-      // forking: {
-      //   url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-      //   blockNumber: 13685625,
-      // },
       chainId: 1,
       initialBaseFeePerGas: 5,
-      allowUnlimitedContractSize: true,
       blockGasLimit: 50000000,
     },
-    // mainnet: {
-    //   url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
-    //   accounts: process.env.PRIVATE_KEY
-    //     ? [process.env.PRIVATE_KEY]
-    //     : {
-    //         mnemonic: 'test test test test test test test test test test test junk',
-    //       },
-    // },
+    goerli: {
+           url: `${process.env.NODE_URL_GOERLI}`,
+           accounts: [process.env.PK],
+           gas: 10000000 ,
+           gasPrice: 40000000000
+      } ,
+      mumbai: {
+        url: `${process.env.NODE_URL_MUMBAI}`,
+        accounts: [process.env.PK],
+        gas: 10000000 ,
+        gasPrice: 40000000000
+   } ,
+   chiado: {
+    url: `${process.env.NODE_URL_CHIADO}`,
+    accounts: [process.env.PK],
+    gas: 10000000 ,
+    gasPrice: 40000000000
+} ,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY,

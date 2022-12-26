@@ -2,7 +2,9 @@ const { ethers } = require("hardhat");
 const web3 = require('web3');
 const { expect, assert } = require("chai");
 const h = require("usingtellor/test/helpers/helpers.js");
+const HASH = require("../build/Hasher.json")
 const { buildPoseidon } = require("circomlibjs");
+const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 
 describe("full system tests", function() {
     let incentiveToken,token,accounts,cfc;

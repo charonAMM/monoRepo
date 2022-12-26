@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "feeContract/contracts/CFC.sol";
+import "feeContract/contracts/helpers/Oracle.sol";
 
 /**
  @title CFCImporter
