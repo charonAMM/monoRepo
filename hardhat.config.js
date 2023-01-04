@@ -49,21 +49,24 @@ const config = {
     goerli: {
            url: `${process.env.NODE_URL_GOERLI}`,
            accounts: [process.env.PK],
-           gas: 10000000 ,
-           gasPrice: 40000000000
+           gas: 9000000,
+           chainId:5,
+           gasPrice: 10000000000
       } ,
-      mumbai: {
+    mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
         accounts: [process.env.PK],
-        gas: 10000000 ,
+        gas: 9000000,
+        chainId: 80001,
         gasPrice: 40000000000
-   } ,
-   chiado: {
-    url: `${process.env.NODE_URL_CHIADO}`,
-    accounts: [process.env.PK],
-    gas: 10000000 ,
-    gasPrice: 40000000000
-} ,
+    } ,
+    chiado: {
+        url: `${process.env.NODE_URL_CHIADO}`,
+        accounts: [process.env.PK],
+        gas: 9000000,
+        chainId: 10200,
+       gasPrice: 3000000000
+    } ,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY,
