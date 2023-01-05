@@ -77,17 +77,22 @@ async function deploySystem() {
     // await charon.deployed()
     // console.log("charonAMM contract deployed to: ", base + charon.address);
 
+    //deploy CHD
+    myContract = await hre.ethers.getContractFactory("charonAMM/contracts/mocks/MockERC20.sol:MockERC20")
+    let chd = await myContract.deploy(charon,"charon dollar","chd")
+    console.log("chd deployed to ", base + chd.address)
 
-    myContract = await hre.ethers.getContractFactory("feeContract/contracts/CFC.sol:CFC")
-    let cfc = await myContract.deploy(charon,oracle,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
-    await cfc.deployed()
-    console.log("cfc deployed to ", base + cfc.address)
-    myContract = await hre.ethers.getContractFactory("incentiveToken/contracts/Auction.sol:Auction")
-    let cit = await myContract.deploy(baseToken,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
-    await cit.deployed()
-    console.log("CIT deployed to ", base + cit.address)
-    await cfc.setCIT(cit.address);
-    console.log("cit address set")
+
+    // myContract = await hre.ethers.getContractFactory("feeContract/contracts/CFC.sol:CFC")
+    // let cfc = await myContract.deploy(charon,oracle,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
+    // await cfc.deployed()
+    // console.log("cfc deployed to ", base + cfc.address)
+    // myContract = await hre.ethers.getContractFactory("incentiveToken/contracts/Auction.sol:Auction")
+    // let cit = await myContract.deploy(baseToken,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
+    // await cit.deployed()
+    // console.log("CIT deployed to ", base + cit.address)
+    // await cfc.setCIT(cit.address);
+    // console.log("cit address set")
 }
 
 deploySystem()
