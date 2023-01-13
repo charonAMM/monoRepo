@@ -47,35 +47,35 @@ async function deploySystem() {
     }
     await run("compile")
     console.log("deploying charon system to: ", _networkName)
-    // //deploying Verifier Contracts
-    // let myContract = await hre.ethers.getContractFactory("Verifier2")
-    // let verifier2 = await myContract.deploy()
-    // await verifier2.deployed()
-    // console.log("verifier 2 contract deployed to: ", base + verifier2.address);
-    // myContract = await hre.ethers.getContractFactory("Verifier16")
-    // let verifier16 = await myContract.deploy()
-    // await verifier16.deployed()
-    // console.log("verifier16 contract deployed to:", base+ verifier16.address);
-    // //deploy Hasher
-    // let Hasher = await hre.ethers.getContractFactory(HASH.abi, HASH.bytecode);
-    // let hasher = await Hasher.deploy();
-    // await hasher.deployed()
-    // console.log("hasher contract deployed to: ", base + hasher.address);
-    // //deploying a mock baseToken (use wrapped native for main deployment)
-    // myContract = await hre.ethers.getContractFactory("charonAMM/contracts/mocks/MockERC20.sol:MockERC20")
-    // let baseToken = await myContract.deploy(myAddress,"baseToken","CBT")
-    // await baseToken.deployed()
-    // console.log("baseToken contract deployed to: ", base + baseToken.address);
-    // //deploying the oracle contract
-    // myContract = await hre.ethers.getContractFactory("charonAMM/contracts/helpers/Oracle.sol:Oracle")
-    // let oracle = await myContract.deploy(tellor)
-    // await oracle.deployed()
-    // console.log("oracle contract deployed to: ", base + oracle.address);
-    // //deploying Chaorn
-    // myContract = await hre.ethers.getContractFactory("charonAMM/contracts/Charon.sol:Charon")
-    // let charon = await myContract.deploy(verifier2.address,verifier16.address,hasher.address,baseToken.address,fee,oracle.address,HEIGHT,chainID,"Charon Pool Token","CPT")
-    // await charon.deployed()
-    // console.log("charonAMM contract deployed to: ", base + charon.address);
+    //deploying Verifier Contracts
+    let myContract = await hre.ethers.getContractFactory("Verifier2")
+    let verifier2 = await myContract.deploy()
+    await verifier2.deployed()
+    console.log("verifier 2 contract deployed to: ", base + verifier2.address);
+    myContract = await hre.ethers.getContractFactory("Verifier16")
+    let verifier16 = await myContract.deploy()
+    await verifier16.deployed()
+    console.log("verifier16 contract deployed to:", base+ verifier16.address);
+    //deploy Hasher
+    let Hasher = await hre.ethers.getContractFactory(HASH.abi, HASH.bytecode);
+    let hasher = await Hasher.deploy();
+    await hasher.deployed()
+    console.log("hasher contract deployed to: ", base + hasher.address);
+    //deploying a mock baseToken (use wrapped native for main deployment)
+    myContract = await hre.ethers.getContractFactory("charonAMM/contracts/mocks/MockERC20.sol:MockERC20")
+    let baseToken = await myContract.deploy(myAddress,"baseToken","CBT")
+    await baseToken.deployed()
+    console.log("baseToken contract deployed to: ", base + baseToken.address);
+    //deploying the oracle contract
+    myContract = await hre.ethers.getContractFactory("charonAMM/contracts/helpers/Oracle.sol:Oracle")
+    let oracle = await myContract.deploy(tellor)
+    await oracle.deployed()
+    console.log("oracle contract deployed to: ", base + oracle.address);
+    //deploying Chaorn
+    myContract = await hre.ethers.getContractFactory("charonAMM/contracts/Charon.sol:Charon")
+    let charon = await myContract.deploy(verifier2.address,verifier16.address,hasher.address,baseToken.address,fee,oracle.address,HEIGHT,chainID,"Charon Pool Token","CPT")
+    await charon.deployed()
+    console.log("charonAMM contract deployed to: ", base + charon.address);
 
     //deploy CHD
     myContract = await hre.ethers.getContractFactory("charonAMM/contracts/mocks/MockERC20.sol:MockERC20")
@@ -83,16 +83,16 @@ async function deploySystem() {
     console.log("chd deployed to ", base + chd.address)
 
 
-    // myContract = await hre.ethers.getContractFactory("feeContract/contracts/CFC.sol:CFC")
-    // let cfc = await myContract.deploy(charon,oracle,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
-    // await cfc.deployed()
-    // console.log("cfc deployed to ", base + cfc.address)
-    // myContract = await hre.ethers.getContractFactory("incentiveToken/contracts/Auction.sol:Auction")
-    // let cit = await myContract.deploy(baseToken,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
-    // await cit.deployed()
-    // console.log("CIT deployed to ", base + cit.address)
-    // await cfc.setCIT(cit.address);
-    // console.log("cit address set")
+    myContract = await hre.ethers.getContractFactory("feeContract/contracts/CFC.sol:CFC")
+    let cfc = await myContract.deploy(charon,oracle,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
+    await cfc.deployed()
+    console.log("cfc deployed to ", base + cfc.address)
+    myContract = await hre.ethers.getContractFactory("incentiveToken/contracts/Auction.sol:Auction")
+    let cit = await myContract.deploy(baseToken,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
+    await cit.deployed()
+    console.log("CIT deployed to ", base + cit.address)
+    await cfc.setCIT(cit.address);
+    console.log("cit address set")
 }
 
 deploySystem()
