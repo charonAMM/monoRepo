@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 interface IOracle {
-    function getRootHashAndSupply(uint256 _timestamp,address _addy) external returns(bytes memory);
+    function getRootHashAndSupply(uint256 _timestamp,uint256 _chainID, address _address) external view returns(bytes memory _value);
 }
 
 interface ICharon {
@@ -111,6 +111,7 @@ contract CFC is MerkleTree{
         uint256 baseTokenRewardsPerToken;//base tokens due to each holder of cit tokens
     }
 
+    uint256 public CITChain; //chain that CIT token is on
     uint256 public toOracle;//percent (e.g. 100% = 100e18) going to the oracle provider on this chain
     uint256 public toLPs;//percent (e.g. 100% = 100e18) going to LP's on this chain
     uint256 public toHolders;//percent (e.g. 100% = 100e18) going to Holders of the governance token
@@ -153,14 +154,15 @@ contract CFC is MerkleTree{
         uint256 _endDate = block.timestamp + 30 days;
         feePeriods.push(_endDate);
         feePeriodByTimestamp[_endDate].endDate = _endDate;
-        (address _a, address _b) = charon.getTokens();
-        chd = IERC20(_a);
+        (,address _b) = charon.getTokens();
         token = IERC20(_b);
     }
 
-    function setCIT(address _cit) external{
+    function setCIT(address _cit, uint256 _chainID, address _chd) external{
         require(CIT == address(0), "cit already set");
+        CITChain = _chainID;
         CIT = _cit;
+        chd = IERC20(_chd);
     }
 
     /**
@@ -207,7 +209,7 @@ contract CFC is MerkleTree{
             require(_hashes[0] == _myHash || _hashes[1] == _myHash || _hashes[2] == _myHash);
         }
         require(_inTree(_f.rootHash, _hashes, _right));//checks if your balance/account is in the merkleTree
-        uint256 _baseTokenRewards = _f.chdRewardsPerToken * _balance / 1e18;
+        uint256 _baseTokenRewards = _f.baseTokenRewardsPerToken * _balance / 1e18;
         uint256 _chdRewards =  _f.chdRewardsPerToken * _balance /1e18;
         if(_baseTokenRewards > 0){
             require(token.transfer(_account, _baseTokenRewards));
@@ -224,7 +226,7 @@ contract CFC is MerkleTree{
     function endFeeRound() external{
         FeePeriod storage _f = feePeriodByTimestamp[feePeriods[feePeriods.length - 1]];
         require(block.timestamp > _f.endDate + 12 hours, "round should be over and time for tellor");
-        bytes memory _val = oracle.getRootHashAndSupply(_f.endDate,CIT);
+        bytes memory _val = oracle.getRootHashAndSupply(_f.endDate,CITChain,CIT);
         (bytes32 _rootHash, uint256 _totalSupply) = abi.decode(_val,(bytes32,uint256));
         _f.rootHash = _rootHash;
         _f.totalSupply = _totalSupply;

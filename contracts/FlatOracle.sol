@@ -878,28 +878,14 @@ contract Oracle is UsingTellor{
         _reporter = getReporterByTimestamp(_queryId, _timestamp);
     }
 
-  function bytesToString(bytes memory buffer) public pure returns (string memory) {
-
-        // Fixed buffer size for hexadecimal convertion
-        bytes memory converted = new bytes(buffer.length * 2);
-
-        bytes memory _base = "0123456789abcdef";
-
-        for (uint256 i = 0; i < buffer.length; i++) {
-            converted[i * 2] = _base[uint8(buffer[i]) / _base.length];
-            converted[i * 2 + 1] = _base[uint8(buffer[i]) % _base.length];
-        }
-
-        return string(abi.encodePacked("0x", converted));
-    }
-
     /**
      * @dev grabs the oracle value from the tellor oracle
      * @param _timestamp timestamp to grab
+     * @param _chainID chain to grab
      * @param _address address of the CIT token on mainnet Ethereum
      */
-    function getRootHashAndSupply(uint256 _timestamp,address _address) public view returns(bytes memory _value){
-        bytes32 _queryId = keccak256(abi.encode("CrossChainBalance",abi.encode(1,_address,_timestamp)));
+    function getRootHashAndSupply(uint256 _timestamp,uint256 _chainID, address _address) public view returns(bytes memory _value){
+        bytes32 _queryId = keccak256(abi.encode("CrossChainBalance",abi.encode(_chainID,_address,_timestamp)));
         (_value,_timestamp) = getDataBefore(_queryId,block.timestamp - 12 hours);
         require(_timestamp > 0, "timestamp must be present");
     }

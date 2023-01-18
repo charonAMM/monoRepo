@@ -51,7 +51,7 @@ const config = {
            accounts: [process.env.PK],
            gas: 9000000,
            chainId:5,
-           gasPrice: 10000000000
+           gasPrice: 30000000000
       } ,
     mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
@@ -69,7 +69,21 @@ const config = {
     } ,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_KEY,
+    apiKey: {
+      goerli: process.env.ETHERSCAN_KEY,
+      polygonMumbai: process.env.POLYGONSCAN_KEY,
+      chiado: process.env.BLOCKSCOUT_KEY,
+    },
+    customChains: [
+      {
+        network: "chiado",
+        chainId: 10200,
+        urls: {
+          apiURL: "https://api-goerli.etherscan.io/api",
+          browserURL: "https://blockscout.chiadochain.net"
+        }
+      }
+    ]
   },
   mocha: {
     timeout: 600000000,
