@@ -19,33 +19,36 @@ async function finalizePools() {
     if(_networkName == "mumbai"){
         tellor = "0x8f55D884CAD66B79e1a131f6bCB0e66f4fD84d5B"
         base = "https://mumbai.polygonscan.com/address/"
-        baseToken = "0x23D57956cE5a07D60CbCA5CeceA8afC506DE013D"
-        charon = "0x28af28Bb3C63Be91751cf64ac16E5b0f73A8aB10"
-        chd = "0x0fB76cC2f59e4D582EE5EEa687a95f2a98Fb8198"
-        oracle = "0x3b94C0a8ba635d4356b66bedE55C82115d9CaFEF"
-        cfc = "0xA8c1184A981f1b517654EAE6fc0e0585BE7B91D7"
+        baseToken =  "0x449Ee7C67Ba0F97aa66290F885CC1519eE136bA0"
+        charon =  "0xDf1163e76105548a9B71829Ac7d7e8fB83874FB0"
+        oracle =  "0x6dd9e5B2d861f3C17988F70589CEFa7bb560f2B5"
+        chd =  "0x3B915fE1dE6b689133080348cF6D658854747390"
+        cit =  "0x70725546174986C2626377ff47887096CD9cd717"
+        cfc =  "0x072D2558C78b1598EF989B2BFcd24bcc546f1284"
         cChainIDs = [5,10200]
         cAddys = ["0xdF76f7D5C15689ee175b1b73eF12855565bd07D3","0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"]
     }
     else if(_networkName == "goerli"){
         tellor = "0xB3B662644F8d3138df63D2F43068ea621e2981f9"
         base = "https://goerli.etherscan.io/address/"
-        baseToken = "0x524547A8f3188f8Be5c5699e5eC93E0693EA84b9"
-        charon = "0xdF76f7D5C15689ee175b1b73eF12855565bd07D3"
-        chd = "0x265c2099d01C0aD083D137F9300D511E99b813c5"
-        cfc = "0x7eE7d9e3E8d9A9978E4da96BD49da6030Eb939b9"
-        oracle = "0xbBB4148Cc9bde1c9b938AF6b225E8b5260D9078C"
+        baseToken =  "0xA4Fe7f0724ffbb69F55E3E3A38234a9B91AD4a9E"
+        charon =  "0x1Ed985e19AC90038885D45216f38A6a23FaF174b"
+        oracle =  "0x0Bb762fD0b90418C159d87aF706aAdE13b4432C4"
+        chd =  "0x5280399F2BE09Deebf3f971665527aD873e3772C"
+        cit =  "0x15723cecEeA0eC9d11952CE1cc9d0b37772ec662"
+        cfc =  "0x0d3C08e4b3674155D24879251c74dec72E987e73"
         cChainIDs = [80001,10200]
         cAddys = ["0x28af28Bb3C63Be91751cf64ac16E5b0f73A8aB10","0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"]
     }
     else if(_networkName == "chiado"){
         tellor = "0xd71F72C18767083e4e3FE84F9c62b8038C1Ef4f6"
         base = "https://blockscout.chiadochain.net/address/"
-        baseToken = "0xAda4924b1B5803980CF3F45C2dE1c8DcafF9FBd5"
-        charon = "0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"
-        chd = "0x9455DBaB68Ae3486768257a9744bC70B7Afc729b"
-        cfc = "0xabD25adbF956a96C3A3130a3a0D0A20E684dC701"
-        oracle = "0xa643c48A80FFEeF6Eb5868bc786aC81Eb132799d"
+        baseToken =  "0x431c22B4e2923df8e73F9f3f643AF57677aC89a7"
+        charon =  "0x5C69551859E27E93f8f4179Fb87691fe6FF292bC"
+        oracle =  "0x659A57d4Bd449148142aAD40183DcaE2A7C41Cc7"
+        chd =  "0x428Fbc07B3f2F84683752dCEd6108909C930B264"
+        cit =  "0x84544A451A0Eb2F963e735c84033740106F3C60A"
+        cfc =  "0xb003F713503Bcb02307E3DDe10456fcC7cDE263F"
         cChainIDs = [5,80001]
         cAddys = ["0xdF76f7D5C15689ee175b1b73eF12855565bd07D3","0x28af28Bb3C63Be91751cf64ac16E5b0f73A8aB10"]
     }
