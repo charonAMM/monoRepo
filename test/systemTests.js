@@ -15,7 +15,7 @@ const Snapshot = require("../src/Snapshot")
 
 describe("full system tests", function() {
     let verifier2,verifier16,token,hasher,token2, builtPoseidon;
-    let charon, charon2,oracle,oracle2,accounts,cfc,cfc2,cit,Snap;
+    let charon, charon2,mockNative ,mockNative2,gnosisAMB, gnosisAMB2, e2p, p2e, accounts,cfc,cfc2,cit,Snap;
     let fee = 0;
     let HEIGHT = 5;
     
@@ -80,18 +80,26 @@ describe("full system tests", function() {
             tellor2 = await TellorOracle.deploy();
             await tellor2.deployed();
             await tellor.deployed();
-            oracle = await deploy("charonAMM/contracts/helpers/Oracle.sol:Oracle",tellor.address)
-            oracle2 = await deploy("charonAMM/contracts/helpers/Oracle.sol:Oracle",tellor2.address)
-            charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,oracle.address,HEIGHT,1,"Charon Pool Token","CPT")
+            mockNative = await deploy("MockNativeBridge")
+            mockNative2 = await deploy("MockNativeBridge")
+            gnosisAMB = await deploy("GnosisAMB", mockNative.address, tellor.address)
+            gnosisAMB2 = await deploy("GnosisAMB", mockNative2.address, tellor2.address)
+            p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
+            e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address,mockNative.address)
+            await mockNative.setUsers(gnosisAMB.address, p2e.address, e2p.address)
+            await mockNative2.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
+            charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,[e2p.address,gnosisAMB.address],HEIGHT,1,"Charon Pool Token","CPT")
             //now deploy on other chain (same chain, but we pretend w/ oracles)
             token2 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",accounts[1].address,"Dissapearing Space Monkey2","DSM2")
             await token2.mint(accounts[0].address,web3.utils.toWei("1000000"))//1M
-            charon2 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token2.address,fee,oracle2.address,HEIGHT,2,"Charon Pool Token2","CPT2");
+            charon2 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token2.address,fee,[p2e.address],HEIGHT,2,"Charon Pool Token2","CPT2");
             chd = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",charon.address,"charon dollar","chd")
             chd2 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",charon2.address,"charon dollar2","chd2")
-            cfc = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
-            cfc2 = await deploy("feeContract/contracts/CFC.sol:CFC",charon2.address,oracle2.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
+            cfc = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,e2p.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
+            cfc2 = await deploy("feeContract/contracts/CFC.sol:CFC",charon2.address,p2e.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
             cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",token.address,web3.utils.toWei("2000"),86400*7,cfc.address,"Charon Incentive Token","CIT",web3.utils.toWei("100000"));
+            await p2e.setCharon(charon2.address);
+            await e2p.setCharon(charon.address);
             await token.approve(charon.address,web3.utils.toWei("100"))//100
             await token2.approve(charon2.address,web3.utils.toWei("100"))//100
             await charon.finalize([2],[charon2.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd.address,cfc.address);
@@ -103,7 +111,8 @@ describe("full system tests", function() {
     });
     it("test whole system deployment, constructors and initialization", async function() {
         //charonAMM
-        assert(await charon.oracle() == oracle.address, "oracle  address should be set")
+        let _v = await charon.getOracles();
+        assert(_v[1] == gnosisAMB.address, "oracle  address should be set")
         assert(await charon.levels() == HEIGHT, "merkle Tree height should be set")
         assert(await charon.hasher() == hasher.address, "hasher should be set")
         assert(await charon.verifier2() == verifier2.address, "verifier2 should be set")
@@ -113,14 +122,20 @@ describe("full system tests", function() {
         assert(await charon.controller() == cfc.address, "controller should be set")
         assert(await charon.chainID() == 1, "chainID should be correct")
         //finalize
-        let testCharon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token2.address,fee,tellor2.address,HEIGHT,2,"Charon Pool Token2","CPT2");
-        let chd3 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",testCharon.address,"charon dollar3","chd3")
-        let cfc3 = await deploy("feeContract/contracts/CFC.sol:CFC",testCharon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
+        let mockNative3 = await deploy("MockNativeBridge")
+        await mockNative3.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
+        let token3 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",accounts[1].address,"Dissapearing Space Monkey2","DSM2")
+        await token3.mint(accounts[0].address,web3.utils.toWei("1000000"))//1M
+        let testCharon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token3.address,fee,[gnosisAMB2.address],HEIGHT,3,"Charon Pool Token2","CPT2");
+        let chd3 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",testCharon.address,"charon dollar3","chd3") 
+        await chd3.deployed();
+        cfc3 = await deploy("feeContract/contracts/CFC.sol:CFC",testCharon.address,gnosisAMB2.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"))
+        await cfc3.deployed();
         await h.expectThrow(testCharon.finalize([1],[charon.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address));//must transfer token
-        await token2.approve(testCharon.address,web3.utils.toWei("100"))//100
-        await h.expectThrow(testCharon.connect(accounts[1]).finalize([1],[charon.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address))//must be controller
+        await token3.approve(testCharon.address,web3.utils.toWei("100"))
+        await h.expectThrow(testCharon.connect(accounts[1]).finalize([1],[charon.address,charon2.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address))//must be controller
         await h.expectThrow(testCharon.finalize([1,2],[charon.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address))//length should be same
-        await testCharon.finalize([1],[charon.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address);
+        await testCharon.finalize([1,2],[charon.address,charon2.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address, cfc3.address);
         await h.expectThrow(testCharon.finalize([1],[charon.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd3.address,cfc3.address))//already finalized
         assert(await testCharon.finalized(), "should be finalized")
         assert(await testCharon.balanceOf(accounts[0].address) - web3.utils.toWei("100") == 0, "should have full balance")
@@ -130,11 +145,10 @@ describe("full system tests", function() {
         let pC = await testCharon.getPartnerContracts();
         assert(pC[0][0] == 1, "partner chain should be correct")
         assert(pC[0][1] == charon.address, "partner address should be correct")
-
         //cfc 
         assert(await cfc.CIT() == cit.address, "cit should be set")
         assert(await cfc.charon() == charon.address, "charon should be set")
-        assert(await cfc.oracle() == oracle.address, "tellor should be set")
+        assert(await cfc.oracle() == e2p.address, "tellor should be set")
         assert(await cfc.toOracle() == web3.utils.toWei("10"), "toOracle should be set")
         assert(await cfc.toLPs() == web3.utils.toWei("20"), "toLPs should be set")
         assert(await cfc.toHolders() == web3.utils.toWei("50"), "toHolders should be set")
@@ -145,7 +159,6 @@ describe("full system tests", function() {
         assert(thisPeriod.endDate - feePeriod == 0, "end date should be set")
         assert(await cfc.token() == token.address, "base token should be set")
         assert(await cfc.chd() ==chd.address, "chd should be set")
-
         //cit
         assert(await cit.bidToken() == token.address, "token should be set")
         assert(await cit.mintAmount() == web3.utils.toWei("2000"), "mint amount should be set")
@@ -187,11 +200,9 @@ describe("full system tests", function() {
             [args.proof,args.publicAmount,args.root]
             );
             let depositId = await charon.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-            let tellorData = await getTellorData(tellor2,charon.address,1,depositId) 
-            let commi = await getTellorSubmission(args,extData);
-            await tellor2.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-            await h.advanceTime(43201)//12 hours
-            await charon2.oracleDeposit([1],0);  
+            let stateId = await p2e.latestStateId();
+            let _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+            await charon2.oracleDeposit([0],_id);
             // Alice sends some funds to withdraw (ignore bob)
             let bobSendAmount = utils.parseEther('4')
             let bobKeypair = new Keypair({myHashFunc:poseidon}) // contains private and public keys
@@ -373,11 +384,9 @@ describe("full system tests", function() {
             [args.proof,args.publicAmount,args.root]
             );
             depositId = await charon.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-            tellorData = await getTellorData(tellor2,charon.address,1,depositId) 
-            commi = await getTellorSubmission(args,extData);
-            await tellor2.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-            await h.advanceTime(43200)//12 hours
-            tx = await charon2.oracleDeposit([depositId],0);  
+            stateId = await p2e.latestStateId();
+            _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+            await charon2.oracleDeposit([0],_id);
             // Alice sends some funds to withdraw (ignore bob)
             bobSendAmount = utils.parseEther('4')
             bobKeypair = new Keypair({myHashFunc:poseidon}) // contains private and public keys
@@ -530,21 +539,28 @@ describe("full system tests", function() {
         let TellorOracle = await ethers.getContractFactory(abi, bytecode);
         let tellor3 = await TellorOracle.deploy();
         await tellor3.deployed();
-        let oracle3 = await deploy("charonAMM/contracts/helpers/Oracle.sol:Oracle",tellor3.address)
-        charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,oracle.address,HEIGHT,1,"Charon Pool Token","CPT")
+        p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
+        e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address,mockNative.address)
+        let mockNative3 = await deploy("MockNativeBridge")
+        await mockNative3.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
+        charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,[e2p.address,gnosisAMB.address],HEIGHT,1,"Charon Pool Token","CPT")
         let token3 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",accounts[1].address,"Dissapearing Space Monkey2","DSM2")
         await token3.mint(accounts[0].address,web3.utils.toWei("1000000"))//1M
-        charon2 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token2.address,fee,oracle2.address,HEIGHT,2,"Charon Pool Token2","CPT2");
-        let charon3 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token3.address,fee,oracle3.address,HEIGHT,3,"Charon Pool Token2","CPT2");
+        charon2 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token2.address,fee,[p2e.address],HEIGHT,2,"Charon Pool Token2","CPT2");
+        let charon3 = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token3.address,fee,[gnosisAMB2.address],HEIGHT,3,"Charon Pool Token2","CPT2");
         chd = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",charon.address,"charon dollar","chd")
         chd2 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",charon2.address,"charon dollar2","chd2")
         let chd3 = await deploy("charonAMM/contracts/mocks/MockERC20.sol:MockERC20",charon3.address,"charon dollar3","chd3") 
         await token.approve(charon.address,web3.utils.toWei("100"))//100
         await token2.approve(charon2.address,web3.utils.toWei("100"))//100
         await token3.approve(charon3.address,web3.utils.toWei("100"))
-        cfc = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
-        cfc2 = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
-        cfc3 = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
+        await mockNative.setUsers(gnosisAMB.address, p2e.address, e2p.address)
+        await mockNative2.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
+        await p2e.setCharon(charon2.address);
+        await e2p.setCharon(charon.address);
+        cfc = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,e2p.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
+        cfc2 = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,p2e.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
+        cfc3 = await deploy("feeContract/contracts/CFC.sol:CFC",charon.address,gnosisAMB2.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20"));
         cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",token.address,web3.utils.toWei("2000"),86400*7,cfc.address,"Charon Incentive Token","CIT",web3.utils.toWei("100000"));
         await charon.finalize([2,3],[charon2.address, charon3.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd.address,cfc.address);
         await charon2.finalize([1,3],[charon.address,charon3.address],web3.utils.toWei("100"),web3.utils.toWei("1000"),chd2.address, cfc2.address);
@@ -576,16 +592,9 @@ describe("full system tests", function() {
         let args = inputData.args
         let extData = inputData.extData
         await charon.connect(accounts[1]).depositToOtherChain(inputData.args,extData,false);
-        let dataEncoded = ethers.utils.AbiCoder.prototype.encode(
-          ['bytes', 'uint256', 'bytes32'],
-          [inputData.args.proof, inputData.args.publicAmount,inputData.args.root]
-        );
-        let depositId = await charon.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-        let tellorData = await getTellorData(tellor2,charon.address,1,depositId) 
-        let commi = await getTellorSubmission(inputData.args,extData);
-        await tellor2.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43200)//12 hours
-        await charon2.oracleDeposit([1],0);  
+        let stateId = await p2e.latestStateId();
+        let _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+        await charon2.oracleDeposit([0],_id);
         //deposit from 1 to 3
         await token.mint(accounts[1].address,web3.utils.toWei("100"))
         _amount = await charon.calcInGivenOut(web3.utils.toWei("110"),
@@ -614,11 +623,10 @@ describe("full system tests", function() {
         [args.proof,args.publicAmount,args.root]
         );
         depositId = await charon.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-        tellorData = await getTellorData(tellor3,charon.address,1,depositId) 
-        commi = await getTellorSubmission(args,extData);
-        await tellor3.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43200)//12 hours
-        tx = await charon3.oracleDeposit([2],0);  //deposit id , from chain 1
+        let commi = await getTellorSubmission(args,extData);
+        await mockNative2.setAMBInfo(depositId, commi)
+        _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[depositId]);
+        tx = await charon3.oracleDeposit([0],web3.utils.sha3(_encoded, {encoding: 'hex'}));
         //deposit from 2 to 1
         await token2.mint(accounts[1].address,web3.utils.toWei("100"))
         _amount = await charon2.calcInGivenOut(web3.utils.toWei("100"),
@@ -642,84 +650,11 @@ describe("full system tests", function() {
         args = inputData.args
         extData = inputData.extData
         await charon2.connect(accounts[1]).depositToOtherChain(args,extData,false);
-        dataEncoded = await ethers.utils.AbiCoder.prototype.encode(
-        ['bytes','uint256','bytes32'],
-        [args.proof,args.publicAmount,args.root]
-        );
-        depositId = await charon2.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-        tellorData = await getTellorData(tellor,charon2.address,2,depositId) 
-        commi = await charon2.getOracleSubmission(depositId)
-        await tellor.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43300)//12 hours
-        let blockNumBefore = await ethers.provider.getBlockNumber();
-        let b = await h.getBlock()
-        await charon.oracleDeposit([1],0);
-        //deposit from 2 to 3
-        await token2.mint(accounts[1].address,web3.utils.toWei("100"))
-        _amount = await charon2.calcInGivenOut(web3.utils.toWei("110"),
-                                                  web3.utils.toWei("1000"),
-                                                  _depositAmount,
-                                                  0)
-        await token2.connect(accounts[1]).approve(charon2.address,_amount)
-        let aliceDepositUtxo23 = new Utxo({ amount: _depositAmount,myHashFunc: poseidon, chainID: 3 })
-        inputData = await prepareTransaction({
-          charon: charon2,
-          inputs:[],
-          outputs: [aliceDepositUtxo23],
-          account: {
-            owner: accounts[0].address,
-            publicKey: aliceDepositUtxo23.keypair.address(),
-          },
-          privateChainID: 3,
-          myHasherFunc: poseidon,
-          myHasherFunc2: poseidon2
-        })
-        args = inputData.args
-        extData = inputData.extData
-        await charon2.connect(accounts[1]).depositToOtherChain(args,extData,false);
-        dataEncoded = await ethers.utils.AbiCoder.prototype.encode(
-        ['bytes','uint256','bytes32'],
-        [args.proof,args.publicAmount,args.root]
-        );
-        depositId = await charon2.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-        tellorData = await getTellorData(tellor3,charon2.address,2,depositId) 
         commi = await getTellorSubmission(args,extData);
-        await tellor3.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43300)//12 hours
-        tx = await charon3.oracleDeposit([2],1);  
-        //deposit from 3 to 2
-        await token3.mint(accounts[1].address,web3.utils.toWei("100"))
-        _amount = await charon3.calcInGivenOut(web3.utils.toWei("100"),
-                                                  web3.utils.toWei("1000"),
-                                                  _depositAmount,
-                                                  0)
-        await token3.connect(accounts[1]).approve(charon3.address,_amount)
-        let aliceDepositUtxo32 = new Utxo({ amount: _depositAmount,myHashFunc: poseidon, chainID: 2 })
-        inputData = await prepareTransaction({
-          charon: charon3,
-          inputs:[],
-          outputs: [aliceDepositUtxo32],
-          account: {
-            owner: accounts[0].address,
-            publicKey: aliceDepositUtxo32.keypair.address(),
-          },
-          privateChainID: 2,
-          myHasherFunc: poseidon,
-          myHasherFunc2: poseidon2
-        })
-        args = inputData.args
-        extData = inputData.extData
-        await charon3.connect(accounts[1]).depositToOtherChain(args,extData,false);
-        dataEncoded = await ethers.utils.AbiCoder.prototype.encode(
-        ['bytes','uint256','bytes32'],
-        [args.proof,args.publicAmount,args.root]
-        );
-        depositId = await charon3.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-        tellorData = await getTellorData(tellor2,charon3.address,3,depositId) 
-        commi = await getTellorSubmission(args,extData);
-        await tellor2.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43200)//12 hours
-        tx = await charon2.oracleDeposit([1],1);  
+        await mockNative2.sendMessageToRoot(commi)
+        stateId = await e2p.id();
+        _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+        await charon.oracleDeposit([0],_id);
         //deposit from 3 to 1
         await token3.mint(accounts[1].address,web3.utils.toWei("100"))
         _amount = await charon.calcInGivenOut(web3.utils.toWei("110"),
@@ -750,9 +685,9 @@ describe("full system tests", function() {
         depositId = await charon3.getDepositIdByCommitmentHash(h.hash(dataEncoded))
         tellorData = await getTellorData(tellor,charon3.address,3,depositId)
         commi = await getTellorSubmission(args,extData);
-        await tellor.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-        await h.advanceTime(43300)//12 hours
-        await charon.oracleDeposit([2],1);  
+        await mockNative.setAMBInfo(depositId, commi)
+        _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[depositId]);
+        await charon.oracleDeposit([1],web3.utils.sha3(_encoded, {encoding: 'hex'}));
         //do a swap
         await token.mint(accounts[2].address,web3.utils.toWei("100"))
         let _minOut = await charon.calcOutGivenIn(web3.utils.toWei("120"),web3.utils.toWei("1000"),web3.utils.toWei("10"),0)
@@ -765,8 +700,8 @@ describe("full system tests", function() {
         await token2.connect(accounts[1]).approve(charon2.address,web3.utils.toWei("10"))
         await charon2.connect(accounts[1]).swap(false,web3.utils.toWei("10"), _minOut,_maxPrice)
         await chd3.mint(accounts[1].address,web3.utils.toWei("100"))
-        _minOut = await charon3.calcOutGivenIn(web3.utils.toWei("1010"),web3.utils.toWei("102"),web3.utils.toWei("10"),0)
-        _maxPrice = await charon3.calcSpotPrice(web3.utils.toWei("1010"),web3.utils.toWei("102"),0)
+        _minOut = await charon3.calcOutGivenIn(web3.utils.toWei("1010"),web3.utils.toWei("100"),web3.utils.toWei("10"),0)
+        _maxPrice = await charon3.calcSpotPrice(web3.utils.toWei("1020"),web3.utils.toWei("98"),0)
         await chd3.connect(accounts[1]).approve(charon3.address,web3.utils.toWei("10"))
         await charon3.connect(accounts[1]).swap(true,web3.utils.toWei("10"), _minOut,_maxPrice)//this one with chdt
         //lp withdraw
@@ -861,28 +796,17 @@ describe("full system tests", function() {
                   })
                   await charon.transact(inputData.args,inputData.extData)
                   assert(await chd.balanceOf(accounts[5].address) - _depositAmount == 0, "should mint CHD");
-              inputData = await prepareTransaction({
-                charon: charon2,
-                inputs: [aliceDepositUtxo32],
-                outputs: [],
-                recipient: accounts[5].address,
-                privateChainID: 2,
-                myHasherFunc: poseidon,
-                myHasherFunc2: poseidon2
-            })
-            await charon2.transact(inputData.args,inputData.extData)
-            assert(await chd2.balanceOf(accounts[5].address) - _depositAmount == 0, "should mint CHD");
-                        inputData = await prepareTransaction({
-                          charon: charon3,
-                          inputs: [aliceChangeUtxo],
-                          outputs: [],
-                          recipient: accounts[5].address,
-                          privateChainID: 3,
-                          myHasherFunc: poseidon,
-                          myHasherFunc2: poseidon2
-                      })
-                      await charon3.transact(inputData.args,inputData.extData)
-                      assert(await chd3.balanceOf(accounts[5].address) - (_depositAmount - bobSendAmount) == 0, "should mint CHD");
+          inputData = await prepareTransaction({
+            charon: charon3,
+            inputs: [aliceChangeUtxo],
+            outputs: [],
+            recipient: accounts[5].address,
+            privateChainID: 3,
+            myHasherFunc: poseidon,
+            myHasherFunc2: poseidon2
+        })
+        await charon3.transact(inputData.args,inputData.extData)
+        assert(await chd3.balanceOf(accounts[5].address) - (_depositAmount - bobSendAmount) == 0, "should mint CHD");
         //LP extra on all 3
         await token.connect(accounts[1]).approve(charon.address,web3.utils.toWei("10"))
         let minOut = await charon.calcPoolOutGivenSingleIn(web3.utils.toWei("100"),//tokenBalanceIn
@@ -1013,15 +937,11 @@ describe("full system tests", function() {
             [args.proof,args.publicAmount,args.root]
             );
             depositId = await charon.getDepositIdByCommitmentHash(h.hash(dataEncoded))
-            tellorData = await getTellorData(tellor2,charon.address,1,depositId) 
-            commi = await getTellorSubmission(args,extData);
-            await tellor2.submitValue(tellorData.queryId,commi,tellorData.nonce,tellorData.queryData)
-            await h.advanceTime(43200)//12 hours
-            tx = await charon2.oracleDeposit([depositId],0);  
-            // Alice sends some funds to withdraw (ignore bob)
+            stateId = await p2e.latestStateId();
+            _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+            await charon2.oracleDeposit([0],_id);
             bobSendAmount = utils.parseEther('4')
-            bobKeypair = new Keypair({myHashFunc:poseidon}) // contains private and public keys
- // contains private and public keys
+            bobKeypair = new Keypair({myHashFunc:poseidon})
             bobAddress = await bobKeypair.address() // contains only public key
             bobSendUtxo = new Utxo({ amount: bobSendAmount,myHashFunc: poseidon, keypair: Keypair.fromString(bobAddress,poseidon), chainID: 2 })
             let aliceChangeUtxo2 = new Utxo({
@@ -1041,8 +961,6 @@ describe("full system tests", function() {
             args = inputData.args
             extData = inputData.extData
             await charon2.transact(args,extData)
-            let bal1 = await token2.balanceOf(accounts[0].address);
-            let chdbal1 = await chd2.balanceOf(accounts[0].address)
             await charon2.lpWithdraw(web3.utils.toWei("94"), web3.utils.toWei("700"),web3.utils.toWei("70"))
             assert(await charon2.totalSupply() <=  web3.utils.toWei("6"), "all(most) pool tokens should be gone")
     });

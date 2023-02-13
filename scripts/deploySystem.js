@@ -89,11 +89,15 @@ async function deploySystem() {
     await cfc.deployed()
     console.log("cfc deployed to ", base + cfc.address)
     myContract = await hre.ethers.getContractFactory("incentiveToken/contracts/Auction.sol:Auction")
-    let cit = await myContract.deploy(baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
-    await cit.deployed()
-    console.log("CIT deployed to ", base + cit.address)
-    await cfc.setCIT(cit.address, 5, chd.address);
-    console.log("cit address set")
+    if(_networkName == "goerli"){
+        let cit = await myContract.deploy(baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
+        await cit.deployed()
+        console.log("CIT deployed to ", base + cit.address)
+    }
+    else{
+        console.log("no CIT deployed to this network")
+    }
+
 
 
     tellor = "0xd71F72C18767083e4e3FE84F9c62b8038C1Ef4f6"
@@ -106,8 +110,8 @@ async function deploySystem() {
     console.log("charon = ", '"'+ charon.address + '"')
     console.log("oracle = ", '"'+ oracle.address + '"')
     console.log("chd = ", '"'+ chd.address + '"')
-    console.log("cit = ", '"'+ cit.address + '"')
     console.log("cfc = ", '"'+ cfc.address + '"')
+    console.log("cit = ", '"'+ cit.address + '"')
 
     console.log("verifier2")
     console.log("veriifer16")
@@ -168,12 +172,14 @@ async function deploySystem() {
         constructorArguments: [charon.address,oracle.address,web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20")]
     })
     console.log("cfc verified")
-    await run("verify:verify",{
-        address: cit.address,
-        contract: "incentiveToken/contracts/Auction.sol:Auction",
-        constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000")]
-    })
-    console.log("cit verified")
+    if(_networkName == "goerli"){
+        await run("verify:verify",{
+            address: cit.address,
+            contract: "incentiveToken/contracts/Auction.sol:Auction",
+            constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000")]
+        })
+        console.log("cit verified")
+    }
 }
 
 deploySystem()
