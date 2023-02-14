@@ -85,7 +85,8 @@ describe("full system tests", function() {
             gnosisAMB = await deploy("GnosisAMB", mockNative.address, tellor.address)
             gnosisAMB2 = await deploy("GnosisAMB", mockNative2.address, tellor2.address)
             p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
-            e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address,mockNative.address)
+            e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address)
+            await e2p.setFxChildTunnel(mockNative.address)
             await mockNative.setUsers(gnosisAMB.address, p2e.address, e2p.address)
             await mockNative2.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
             charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,[e2p.address,gnosisAMB.address],HEIGHT,1,"Charon Pool Token","CPT")
@@ -540,7 +541,8 @@ describe("full system tests", function() {
         let tellor3 = await TellorOracle.deploy();
         await tellor3.deployed();
         p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
-        e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address,mockNative.address)
+        e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address)
+        await e2p.setFxChildTunnel(mockNative.address)
         let mockNative3 = await deploy("MockNativeBridge")
         await mockNative3.setUsers(gnosisAMB2.address, p2e.address, e2p.address)
         charon = await deploy("charonAMM/contracts/Charon.sol:Charon",verifier2.address,verifier16.address,hasher.address,token.address,fee,[e2p.address,gnosisAMB.address],HEIGHT,1,"Charon Pool Token","CPT")

@@ -27,6 +27,8 @@ async function finalizePools() {
         cfc =  "0x072D2558C78b1598EF989B2BFcd24bcc546f1284"
         cChainIDs = [5,10200]
         cAddys = ["0x1Ed985e19AC90038885D45216f38A6a23FaF174b","0x5C69551859E27E93f8f4179Fb87691fe6FF292bC"]
+
+        p2e setCharon
     }
     else if(_networkName == "goerli"){
         tellor = "0xB3B662644F8d3138df63D2F43068ea621e2981f9"
@@ -38,6 +40,8 @@ async function finalizePools() {
         cfc =  "0x0d3C08e4b3674155D24879251c74dec72E987e73"
         cChainIDs = [80001,10200]
         cAddys = ["0xDf1163e76105548a9B71829Ac7d7e8fB83874FB0","0x5C69551859E27E93f8f4179Fb87691fe6FF292bC"]
+
+        e2p setCharon
     }
     else if(_networkName == "chiado"){
         tellor = "0xd71F72C18767083e4e3FE84F9c62b8038C1Ef4f6"
