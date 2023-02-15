@@ -1,5 +1,9 @@
-// SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+//SPDX-License-Identifier: Unlicense
+pragma solidity ^0.8.0;
+
+interface IAMB {
+    function requireToGetInformation(bytes32 _requestSelector, bytes calldata _data) external returns (bytes32);
+}
 
 interface ITellor {
     //Controller
@@ -851,31 +855,42 @@ contract UsingTellor is IERC2362 {
         }
     }
 }
-
 /**
  @title Oracle
  @dev oracle contract for use in the charon system implementing tellor
  **/
-contract Oracle is UsingTellor{
+contract GnosisAMB is UsingTellor{
 
+    IAMB public ambBridge;
+    bytes32[] public messageIds;
+    mapping(bytes32=> bytes) public messageIdToData;
+    mapping(bytes32=> bool) public didPush;
+    bytes32 public constant _requestSelector = 0x88b6c755140efe88bff94bfafa4a7fdffe226d27d92bd45385bb0cfa90986650; //ethCall
+    event InfoRecieved(bytes32 _messageId, bool _status);
+    
     /**
      * @dev constructor to launch contract 
      * @param _tellor address of tellor oracle contract on this chain
      */
-    constructor(address payable _tellor) UsingTellor(_tellor){}
+    constructor(address _ambBridge, address payable _tellor) UsingTellor(_tellor){
+        ambBridge = IAMB(_ambBridge);
+    }
 
-    /**
-     * @dev grabs the oracle value from the tellor oracle
-     * @param _chain chainID of ID with commitment deposit
-     * @param _depositId depositId of the specific deposit
-     * @return _value bytes data returned from tellor
-     */
-    function getCommitment(uint256 _chain, address _partnerContract, uint256 _depositId) public view returns(bytes memory _value,address _reporter){
-        bytes memory _data = abi.encodeWithSelector(bytes4(keccak256("getOracleSubmission(uint256)")),_depositId);
-        bytes32 _queryId = keccak256(abi.encode("EVMCall",abi.encode(_chain,_partnerContract,_data)));
-        uint256 _timestamp;
-        (_value,_timestamp) = getDataBefore(_queryId,block.timestamp - 12 hours);
-        _reporter = getReporterByTimestamp(_queryId, _timestamp);
+    function getInfo(bytes calldata _data)  external returns (bytes32){
+        return ambBridge.requireToGetInformation(_requestSelector,_data);
+    }
+
+    function onInformationReceived(bytes32 messageId,bool status,bytes calldata result) external{
+        require(msg.sender == address(ambBridge));
+        messageIdToData[messageId] = result;
+        messageIds.push(messageId);
+        emit InfoRecieved(messageId,status);
+    }
+
+    function getCommitment(bytes memory _inputData) external returns(bytes memory _value){
+        bytes32 _messageId = _bytesToBytes32(_inputData);
+        didPush[_messageId] = true;
+        return messageIdToData[_messageId];
     }
 
     /**
@@ -889,4 +904,19 @@ contract Oracle is UsingTellor{
         (_value,_timestamp) = getDataBefore(_queryId,block.timestamp - 12 hours);
         require(_timestamp > 0, "timestamp must be present");
     }
+
+    function sendCommitment(bytes memory _data) external{
+        //don't need to do anything, all on the read side
+    }
+
+    function _bytesToBytes32(bytes memory _b) internal pure returns (bytes32 _out) {
+        for (uint256 _i = 0; _i < 32; _i++) {
+            _out |= bytes32(_b[_i] & 0xFF) >> (_i * 8);
+        }
+    }
+
+    function getMessageIds() external view returns(bytes32[] memory){
+        return messageIds;
+    }
+
 }

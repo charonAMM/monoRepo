@@ -12,7 +12,6 @@ const { exit } = require("process");
 //npx hardhat run scripts/deploySystem.js --network goerli
 //FOR MAINNET, turn tree variables private!!
 //charonAMM Variables
-let base,baseToken,charon,oracle;
 var fee = web3.utils.toWei(".02");//2%
 var HEIGHT = 5;
 var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
@@ -24,11 +23,13 @@ async function deploy(contractName, ...args) {
 }
 
 async function deploySystem() {
-    let  p2e, e2p, gnosisAMB,oracles;
+    let  p2e, e2p, gnosisAMB,oracles,base;
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId
 
     let tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    await run("compile")
+    console.log("deploying charon system to: ", _networkName)
 
     if(_networkName == "mumbai"){
         base = "https://mumbai.polygonscan.com/address/"
@@ -45,7 +46,7 @@ async function deploySystem() {
         base = "https://goerli.etherscan.io/address/"
         checkpointManager = "0x2890bA17EfE978480615e330ecB65333b880928e"
         fxRoot = "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA"
-        amb = "0x87A19d769D875964E9Cd41dDBfc397B2543764E"
+        amb = "0x87A19d769D875964E9Cd41dDBfc397B2543764E6"
         // baseToken = "0x524547A8f3188f8Be5c5699e5eC93E0693EA84b9"
         // charon = "0xdF76f7D5C15689ee175b1b73eF12855565bd07D3"
         // oracle = "0xbBB4148Cc9bde1c9b938AF6b225E8b5260D9078C"
@@ -73,10 +74,8 @@ async function deploySystem() {
         console.log("No network name ", _networkName, " found")
         process.exit(1)
     }
-    await run("compile")
-    console.log("deploying charon system to: ", _networkName)
     //deploying Verifier Contracts
-    let verifier2 = deploy("Verifier2")
+    let verifier2 = await deploy("Verifier2")
     console.log("verifier 2 contract deployed to: ", base + verifier2.address);
 
     let verifier16 = await deploy("Verifier16")
@@ -112,14 +111,12 @@ async function deploySystem() {
 
     console.log("baseToken = ", '"'+ baseToken.address + '"')
     console.log("charon = ", '"'+ charon.address + '"')
-    console.log("oracle = ", '"'+ oracle.address + '"')
     console.log("chd = ", '"'+ chd.address + '"')
     console.log("cfc = ", '"'+ cfc.address + '"')
 
     console.log("verifier2")
     console.log("veriifer16")
     console.log("hahser")
-    console.log("oracle")
     console.log("baseToken")
     console.log("charon")
     console.log("cfc")
@@ -128,11 +125,12 @@ async function deploySystem() {
     console.log(verifier2.address)
     console.log(verifier16.address)
     console.log(hasher.address)
-    console.log(oracle.address)
     console.log(baseToken.address)
     console.log(charon.address)
     console.log(cfc.address)
     console.log(chd.address)
+
+    console.log("oracles = ", oracles)
 
     if(_networkName == "goerli"){
         console.log("cit = ", '"'+ cit.address + '"')
@@ -141,52 +139,80 @@ async function deploySystem() {
     }
 
     //now verify
-    await run("verify:verify",{
-        address: verifier2.address,
-    })
-    console.log("verifier2 verified")
-    await run("verify:verify",{
-        address: verifier16.address,
-    })
-    console.log("verifier16 verified")
-    await run("verify:verify",{
-        address: baseToken.address,
-        contract: "charonAMM/contracts/mocks/MockERC20.sol:MockERC20",
-        constructorArguments: []
-    })
-    console.log("baseToken verified")
-    await run("verify:verify",{
-        address: oracle.address,
-        contract: "charonAMM/contracts/helpers/Oracle.sol:Oracle",
-        constructorArguments: [tellor]
-    })
-    console.log("oracle verified")
-    await run("verify:verify",{
-        address: charon.address,
-        contract: "charonAMM/contracts/Charon.sol:Charon",
-        constructorArguments: [verifier2.address,verifier16.address,hasher.address,baseToken.address,fee,oracles,HEIGHT,chainID,"Charon Pool Token","CPT"]
-    })
-    console.log("charon verified")
-    await run("verify:verify",{
-        address: chd.address,
-        contract: "charonAMM/contracts/mocks/MockERC20.sol:MockERC20",
-        constructorArguments: [charon.address,"charon dollar","chd"]
-    })
-    console.log("chd verified")
-    await run("verify:verify",{
-        address: cfc.address,
-        contract:"feeContract/contracts/CFC.sol:CFC",
-        constructorArguments: [charon.address,oracles[0],web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20")]
-    })
-    console.log("cfc verified")
-
-    if(_networkName == "goerli"){
+    try{
         await run("verify:verify",{
-            address: cit.address,
-            contract: "incentiveToken/contracts/Auction.sol:Auction",
-            constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000")]
+            address: verifier2.address,
         })
-        console.log("cit verified")
+        console.log("verifier2 verified")
+        await run("verify:verify",{
+            address: verifier16.address,
+        })
+        console.log("verifier16 verified")
+        await run("verify:verify",{
+            address: baseToken.address,
+            contract: "charonAMM/contracts/mocks/MockERC20.sol:MockERC20",
+            constructorArguments: [myAddress,"baseToken","CBT"]
+        })
+        console.log("baseToken verified")
+        await run("verify:verify",{
+            address: charon.address,
+            contract: "charonAMM/contracts/Charon.sol:Charon",
+            constructorArguments: [verifier2.address,verifier16.address,hasher.address,baseToken.address,fee,oracles,HEIGHT,chainID,"Charon Pool Token","CPT"]
+        })
+        console.log("charon verified")
+        await run("verify:verify",{
+            address: chd.address,
+            contract: "charonAMM/contracts/mocks/MockERC20.sol:MockERC20",
+            constructorArguments: [charon.address,"charon dollar","chd"]
+        })
+        console.log("chd verified")
+        await run("verify:verify",{
+            address: cfc.address,
+            contract:"feeContract/contracts/CFC.sol:CFC",
+            constructorArguments: [charon.address,oracles[0],web3.utils.toWei("10"),web3.utils.toWei("20"),web3.utils.toWei("50"),web3.utils.toWei("20")]
+        })
+        console.log("cfc verified")
+
+        if(_networkName == "goerli"){
+            await run("verify:verify",{
+                address: cit.address,
+                contract: "incentiveToken/contracts/Auction.sol:Auction",
+                constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000")]
+            })
+            console.log("cit verified")
+
+            await run("verify:verify",{
+                address: e2p.address,
+                contract: "ETHtoPOLBridge",
+                constructorArguments: [tellor,checkpointManager,fxRoot]
+            })
+            console.log("e2p verified")
+        
+            await run("verify:verify",{
+                address: gnosisAMB.address,
+                contract: "GnosisAMB",
+                constructorArguments: [amb,tellor]
+            })
+            console.log("gnosisAMB verified")
+        }
+        else if(_networkName == "chiado"){
+            await run("verify:verify",{
+                address: gnosisAMB.address,
+                contract: "GnosisAMB",
+                constructorArguments: [amb,tellor]
+            })
+            console.log("gnosisAMB verified")
+        }
+        else if(_networkName == "mumbai"){
+            await run("verify:verify",{
+                address: p2e.address,
+                contract: "POLtoETHBridge",
+                constructorArguments: [tellor,fxchild]
+            })
+            console.log("p2e verified")
+        }
+    }catch(err){
+        console.log("error verifying : ", err);
     }
 }
 

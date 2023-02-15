@@ -17,6 +17,12 @@ async function finalizePools() {
     let chainID = hre.network.config.chainId
     cit =  "0x70725546174986C2626377ff47887096CD9cd717"
 
+
+    Call setFxChildTunnel on deployed root tunnel with the address of child tunnel. Example: 0x79cd30ace561a226258918b56ce098a08ce0c70707a80bba91197f127a48b5c2
+
+Call setFxRootTunnel on deployed child tunnel with address of root tunnel. Example: 0xffd0cda35a8c3fd6d8c1c04cd79a27b7e5e00cfc2ffc4b864d2b45a8bb7e98b8
+
+
     if(_networkName == "mumbai"){
         tellor = "0x8f55D884CAD66B79e1a131f6bCB0e66f4fD84d5B"
         base = "https://mumbai.polygonscan.com/address/"
