@@ -12,7 +12,7 @@ const { exit } = require("process");
 //npx hardhat run scripts/deploySystem.js --network goerli
 //FOR MAINNET, turn tree variables private!!
 //charonAMM Variables
-var fee = web3.utils.toWei(".02");//2%
+var fee = web3.utils.toWei(".006");//.6
 var HEIGHT = 5;
 var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
 
