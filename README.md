@@ -10,6 +10,15 @@ npx hardhat compile
 npx hardhat test
 ```
 
+## running scripts
+
+deploying: npx hardhat run scripts/deploySystem.js --network networkName
+
+finalizing: npx hardhat run scripts/finalizePools.js --network networkName
+
+checks: npx hardhat run scripts/manualChecks.js --network networkName
+
+
 ## deployed contracts (current version)
 
 deploy date - 2/14/2023
