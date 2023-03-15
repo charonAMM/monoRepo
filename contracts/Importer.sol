@@ -9,7 +9,7 @@ import "charonAMM/contracts/mocks/MockETHToPOLBridge.sol";
 import "charonAMM/contracts/mocks/MockPOLToETHBridge.sol";
 import "charonAMM/contracts/bridges/ETHtoPOLBridge.sol";
 import "charonAMM/contracts/bridges/POLtoETHBridge.sol";
-import "charonAMM/contracts/bridges/GnosisAMB.sol";
+import "charonAMM/contracts/bridges/TellorBridge.sol";
 
 
 /**
