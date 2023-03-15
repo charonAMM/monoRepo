@@ -13,7 +13,7 @@ const { exit } = require("process");
 //FOR MAINNET, turn tree variables private!!
 //charonAMM Variables
 var fee = web3.utils.toWei(".006");//.6
-var HEIGHT = 5;
+var HEIGHT = 23;
 var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
 
 async function deploy(contractName, ...args) {
@@ -23,7 +23,7 @@ async function deploy(contractName, ...args) {
 }
 
 async function deploySystem() {
-    let  p2e, e2p, gnosisAMB,oracles,base;
+    let  p2e, e2p, tellorBridge,oracles,base, fxRoot, checkpointManager
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId
 
@@ -38,37 +38,33 @@ async function deploySystem() {
         // charon = "0x28af28Bb3C63Be91751cf64ac16E5b0f73A8aB10"
         // oracle = "0x3b94C0a8ba635d4356b66bedE55C82115d9CaFEF"
         
-        p2e = await deploy("POLtoETHBridge", tellor,fxchild)
+        p2e = await deploy("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", tellor,fxchild)
         console.log("POLtoETHBridge deployed to: ", p2e.address);
         oracles = [p2e.address]
     }
     else if(_networkName == "goerli"){
         base = "https://goerli.etherscan.io/address/"
-        checkpointManager = "0x2890bA17EfE978480615e330ecB65333b880928e"
         fxRoot = "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA"
-        amb = "0x87A19d769D875964E9Cd41dDBfc397B2543764E6"
+        checkpointManager = "0x2890bA17EfE978480615e330ecB65333b880928e"
         // baseToken = "0x524547A8f3188f8Be5c5699e5eC93E0693EA84b9"
         // charon = "0xdF76f7D5C15689ee175b1b73eF12855565bd07D3"
         // oracle = "0xbBB4148Cc9bde1c9b938AF6b225E8b5260D9078C"
 
-        //deploy e2p / gnosisAMB
-        e2p = await deploy("ETHtoPOLBridge", tellor,checkpointManager,fxRoot)
+        //deploy e2p / tellorBridge
+        e2p = await deploy("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge", tellor,checkpointManager,fxRoot)
         console.log("ETHtoPOLBridge deployed to: ", e2p.address);
-        gnosisAMB = await deploy("GnosisAMB", amb, tellor)
-        console.log("GnosisAMB deployed to: ", gnosisAMB.address);
-        oracles = [e2p.address, gnosisAMB.address]
+        tellorBridge = await deploy("TellorBridge", tellor)
+        console.log("TellorBridge deployed to: ", tellorBridge.address);
+        oracles = [e2p.address, tellorBridge.address]
     }
     else if(_networkName == "chiado"){
         base = "https://blockscout.chiadochain.net/address/"
-        amb = "0x99Ca51a3534785ED619f46A79C7Ad65Fa8d85e7a"
-        gnosisAMB = await deploy("GnosisAMB", amb, tellor)
         // baseToken = "0xAda4924b1B5803980CF3F45C2dE1c8DcafF9FBd5"
         // charon = "0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"
         // oracle = "0xa643c48A80FFEeF6Eb5868bc786aC81Eb132799d"
-        gnosisAMB = await deploy("GnosisAMB", amb, tellor)
-        console.log("GnosisAMB deployed to: ", gnosisAMB.address);
-        //deploy gnosisAMB
-        oracles = [gnosisAMB.address]
+        tellorBridge = await deploy("TellorBridge", tellor)
+        console.log("TellorBridge deployed to: ", tellorBridge.address);
+        oracles = [tellorBridge.address]
     }
     else{
         console.log("No network name ", _networkName, " found")
@@ -102,7 +98,7 @@ async function deploySystem() {
 
     let cit;
     if(_networkName == "goerli"){
-        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000"))
+        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT")
         console.log("CIT deployed to ", base + cit.address)
     }
     else{
@@ -174,39 +170,43 @@ async function deploySystem() {
         console.log("cfc verified")
 
         if(_networkName == "goerli"){
-            await run("verify:verify",{
-                address: cit.address,
-                contract: "incentiveToken/contracts/Auction.sol:Auction",
-                constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT",web3.utils.toWei("100000")]
-            })
-            console.log("cit verified")
-
+            try{
+                await run("verify:verify",{
+                    address: cit.address,
+                    contract: "incentiveToken/contracts/Auction.sol:Auction",
+                    constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT"]
+                })
+                console.log("cit verified")    
+            }
+            catch{
+                console.log("WARNING: may need to manually verify CIT")
+            }
             await run("verify:verify",{
                 address: e2p.address,
-                contract: "ETHtoPOLBridge",
+                contract: "charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",
                 constructorArguments: [tellor,checkpointManager,fxRoot]
             })
             console.log("e2p verified")
         
             await run("verify:verify",{
-                address: gnosisAMB.address,
-                contract: "GnosisAMB",
-                constructorArguments: [amb,tellor]
+                address: tellorBridge.address,
+                contract: "TellorBridge",
+                constructorArguments: [tellor]
             })
-            console.log("gnosisAMB verified")
+            console.log("tellorBridge verified")
         }
         else if(_networkName == "chiado"){
             await run("verify:verify",{
-                address: gnosisAMB.address,
-                contract: "GnosisAMB",
-                constructorArguments: [amb,tellor]
+                address: tellorBridge.address,
+                contract: "TellorBridge",
+                constructorArguments: [tellor]
             })
-            console.log("gnosisAMB verified")
+            console.log("tellorBridge verified")
         }
         else if(_networkName == "mumbai"){
             await run("verify:verify",{
                 address: p2e.address,
-                contract: "POLtoETHBridge",
+                contract: "charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge",
                 constructorArguments: [tellor,fxchild]
             })
             console.log("p2e verified")

@@ -16,7 +16,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           },
         },
       },
@@ -25,7 +25,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           },
         },
       },
@@ -34,11 +34,31 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           },
         },
       },
     ],
+    overrides: {
+      "charonAMM/contracts/Charon.sol:Charon": {
+        version: "0.8.17",
+        settings: { 
+          optimizer: {
+            enabled: true,
+            runs: 2,
+          }
+        }
+      },
+      "contracts/FlatCharon.sol:FlatCharon": {
+        version: "0.8.17",
+        settings: { 
+          optimizer: {
+            enabled: true,
+            runs: 2,
+          }
+        }
+      },
+    }
   },
   networks: {
     hardhat: {
@@ -51,21 +71,21 @@ const config = {
            accounts: [process.env.PK],
            gas: 9000000,
            chainId:5,
-           gasPrice: 30000000000
+           gasPrice: 80000000000
       } ,
     mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
         accounts: [process.env.PK],
         gas: 9000000,
         chainId: 80001,
-        gasPrice: 40000000000
+        gasPrice: 175000000000
     } ,
     chiado: {
         url: `${process.env.NODE_URL_CHIADO}`,
         accounts: [process.env.PK],
         gas: 9000000,
         chainId: 10200,
-       gasPrice: 3000000000
+       gasPrice: 8000000000
     } ,
   },
   etherscan: {
