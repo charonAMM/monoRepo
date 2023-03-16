@@ -1,6 +1,20 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+//from https://github.com/fx-portal/contracts/blob/main/contracts/tunnel/FxBaseRootTunnel.sol
+
+interface IMappingContract{
+    function getTellorID(bytes32 _id) external view returns(bytes32);
+}
+
+interface IERC2362{
+	/**
+	 * @dev Exposed function pertaining to EIP standards
+	 * @param _id bytes32 ID of the query
+	 * @return int,uint,uint returns the value, timestamp, and status code of query
+	 */
+	function valueFor(bytes32 _id) external view returns(int256,uint256,uint256);
+}
 
 interface ITellor {
     //Controller
@@ -485,19 +499,6 @@ interface Autopay {
 }
 
 
-interface IERC2362{
-	/**
-	 * @dev Exposed function pertaining to EIP standards
-	 * @param _id bytes32 ID of the query
-	 * @return int,uint,uint returns the value, timestamp, and status code of query
-	 */
-	function valueFor(bytes32 _id) external view returns(int256,uint256,uint256);
-}
-
-interface IMappingContract{
-    function getTellorID(bytes32 _id) external view returns(bytes32);
-}
-
 /**
  @author Tellor Inc
  @title UsingTellor
@@ -853,7 +854,6 @@ contract UsingTellor is IERC2362 {
     }
 }
 
-//from https://github.com/fx-portal/contracts/blob/main/contracts/tunnel/FxBaseRootTunnel.sol
 
 library MerklePatriciaProof {
     /*
@@ -1563,7 +1563,7 @@ abstract contract FxBaseRootTunnel {
     }
 
     // set fxChildTunnel if not set already
-    function setFxChildTunnel(address _fxChildTunnel) public virtual {
+    function setFxChildTunnel(address _fxChildTunnel) external virtual {
         require(fxChildTunnel == address(0x0), "FxBaseRootTunnel: CHILD_TUNNEL_ALREADY_SET");
         fxChildTunnel = _fxChildTunnel;
     }
@@ -1655,91 +1655,102 @@ abstract contract FxBaseRootTunnel {
         );
     }
 
-    /**
-     * @notice receive message from  L2 to L1, validated by proof
-     * @dev This function verifies if the transaction actually happened on child chain
-     *
-     * @param inputData RLP encoded data of the reference tx containing following list of fields
-     *  0 - headerNumber - Checkpoint header block number containing the reference tx
-     *  1 - blockProof - Proof that the block header (in the child chain) is a leaf in the submitted merkle root
-     *  2 - blockNumber - Block number containing the reference tx on child chain
-     *  3 - blockTime - Reference tx block time
-     *  4 - txRoot - Transactions root of block
-     *  5 - receiptRoot - Receipts root of block
-     *  6 - receipt - Receipt of the reference transaction
-     *  7 - receiptProof - Merkle proof of the reference receipt
-     *  8 - branchMask - 32 bits denoting the path of receipt in merkle tree
-     *  9 - receiptLogIndex - Log Index to read from the receipt
-     */
-    function receiveMessage(bytes memory inputData) public virtual {
-        bytes memory message = _validateAndExtractMessage(inputData);
-        _processMessageFromChild(message);
-    }
+    // /**
+    //  * @notice receive message from  L2 to L1, validated by proof
+    //  * @dev This function verifies if the transaction actually happened on child chain
+    //  *
+    //  * @param inputData RLP encoded data of the reference tx containing following list of fields
+    //  *  0 - headerNumber - Checkpoint header block number containing the reference tx
+    //  *  1 - blockProof - Proof that the block header (in the child chain) is a leaf in the submitted merkle root
+    //  *  2 - blockNumber - Block number containing the reference tx on child chain
+    //  *  3 - blockTime - Reference tx block time
+    //  *  4 - txRoot - Transactions root of block
+    //  *  5 - receiptRoot - Receipts root of block
+    //  *  6 - receipt - Receipt of the reference transaction
+    //  *  7 - receiptProof - Merkle proof of the reference receipt
+    //  *  8 - branchMask - 32 bits denoting the path of receipt in merkle tree
+    //  *  9 - receiptLogIndex - Log Index to read from the receipt
+    //  */
+    // function receiveMessage(bytes memory inputData) public virtual {
+    //     bytes memory message = _validateAndExtractMessage(inputData);
+    //     _processMessageFromChild(message);
+    // }
 
-    /**
-     * @notice Process message received from Child Tunnel
-     * @dev function needs to be implemented to handle message as per requirement
-     * This is called by receiveMessage function.
-     * Since it is called via a system call, any event will not be emitted during its execution.
-     * @param message bytes message that was sent from Child Tunnel
-     */
-    function _processMessageFromChild(bytes memory message) internal virtual{
+    // /**
+    //  * @notice Process message received from Child Tunnel
+    //  * @dev function needs to be implemented to handle message as per requirement
+    //  * This is called by receiveMessage function.
+    //  * Since it is called via a system call, any event will not be emitted during its execution.
+    //  * @param message bytes message that was sent from Child Tunnel
+    //  */
+    // function _processMessageFromChild(bytes memory message) internal virtual{
 
-    }
+    // }
 }
 
 /**
- @title Oracle
- @dev oracle contract for use in the charon system implementing tellor
+ @title ETHtoPOLBridge
+ @dev bridge contract on Ethereum for connecting to connected charon contract on Polygon
  **/
-contract ETHtoPOLBridge is UsingTellor, FxBaseRootTunnel{
+contract ETHtoPOLBridge is FxBaseRootTunnel,UsingTellor{
 
-    address public charon;
-    uint256 public id;
-    mapping(uint256 => bytes) idToData;
+    address public charon;//charon address of the charon contract on this chain (ETH)
 
     /**
      * @dev constructor to launch contract 
      * @param _tellor address of tellor oracle contract on this chain
      */
     constructor(address payable _tellor, address _checkpointManager, address _fxRoot) 
-        UsingTellor(_tellor)
-        FxBaseRootTunnel(_checkpointManager, _fxRoot){}
+        FxBaseRootTunnel(_checkpointManager, _fxRoot) UsingTellor(_tellor){}
 
+    /**
+     * @dev allows getCommitment for retrieving information from the connected chain
+    //  * @param _inputData RLP encoded data of the reference tx containing following list of fields
+    //  *  0 - headerNumber - Checkpoint header block number containing the reference tx
+    //  *  1 - blockProof - Proof that the block header (in the child chain) is a leaf in the submitted merkle root
+    //  *  2 - blockNumber - Block number containing the reference tx on child chain
+    //  *  3 - blockTime - Reference tx block time
+    //  *  4 - txRoot - Transactions root of block
+    //  *  5 - receiptRoot - Receipts root of block
+    //  *  6 - receipt - Receipt of the reference transaction
+    //  *  7 - receiptProof - Merkle proof of the reference receipt
+    //  *  8 - branchMask - 32 bits denoting the path of receipt in merkle tree
+    //  *  9 - receiptLogIndex - Log Index to read from the receipt
+     */
+    function getCommitment(bytes memory _inputData) external virtual returns(bytes memory _value, address _caller){
+        require(msg.sender == charon, "must be charon");
+        bytes memory _message = _validateAndExtractMessage(_inputData);
+        return (_message,address(0));
+    }
+
+    /**
+     * @dev used by charon to send a commitment to the other chain
+     * @param _data bytes data to send to the other chain
+     */
+    function sendCommitment(bytes memory _data) external{
+        require(msg.sender == charon, "must be charon");
+        _sendMessageToChild(_data);
+    }
+
+    /**
+     * @dev sets the initial charon contract for bridge usage
+     * @param _charon address of charon contract on this chain
+     */
     function setCharon(address _charon) external{
         require(charon == address(0));
         charon = _charon;
     }
-    function _processMessageFromChild(bytes memory _data) internal override {
-        id++;
-        idToData[id] = _data;
-    }
 
-    function getCommitment(bytes memory _inputData) external view returns(bytes memory _value){
-        return idToData[_bytesToUint(_inputData)];
-    }
-
+    //getters
     /**
      * @dev grabs the oracle value from the tellor oracle
      * @param _timestamp timestamp to grab
      * @param _chainID chain to grab
      * @param _address address of the CIT token on mainnet Ethereum
      */
-    function getRootHashAndSupply(uint256 _timestamp,uint256 _chainID, address _address) public view returns(bytes memory _value){
+    function getRootHashAndSupply(uint256 _timestamp,uint256 _chainID, address _address) external view returns(bytes memory _value){
         bytes32 _queryId = keccak256(abi.encode("CrossChainBalance",abi.encode(_chainID,_address,_timestamp)));
         (_value,_timestamp) = getDataBefore(_queryId,block.timestamp - 12 hours);
         require(_timestamp > 0, "timestamp must be present");
     }
-
-    function sendCommitment(bytes memory _data) external{
-        require(msg.sender == charon, "must be charon");
-        _sendMessageToChild(_data);
-    }
-
-    function _bytesToUint(bytes memory _b) internal pure returns (uint256 _n){
-        for(uint256 _i=0;_i<_b.length;_i++){
-            _n = _n + uint(uint8(_b[_i]))*(2**(8*(_b.length-(_i+1))));
-        }
-    }
-
 }

@@ -7,18 +7,18 @@ pragma solidity 0.8.17;
  */
 contract Token{
 
-    /*Storage*/
+    //storage
     string  private tokenName;
     string  private tokenSymbol;
     uint256 internal supply;//totalSupply
     mapping(address => uint) balance;
     mapping(address => mapping(address=>uint)) userAllowance;//allowance
 
-    /*Events*/
+    //events
     event Approval(address indexed _src, address indexed _dst, uint _amt);
     event Transfer(address indexed _src, address indexed _dst, uint _amt);
 
-    /*Functions*/
+    //functions
     /**
      * @dev Constructor to initialize token
      * @param _name of token
@@ -61,7 +61,7 @@ contract Token{
         _move(_from,_to,_amount);
         if (msg.sender != _from) {
             userAllowance[_from][msg.sender] = userAllowance[_from][msg.sender] -  _amount;
-            emit Approval(msg.sender, _to, userAllowance[_from][msg.sender]);
+            emit Approval(_from, msg.sender, userAllowance[_from][msg.sender]);
         }
         return true;
     }
@@ -118,7 +118,7 @@ contract Token{
         return supply;
     }
 
-    /**Internal Functions */
+    //internal
     /**
      * @dev burns tokens
      * @param _from address to burn tokens from
@@ -160,12 +160,14 @@ contract Token{
 **/    
 contract CHD is Token{
 
-    //Storage
+    //storage
     address public charon;//address of the charon contract
-    //Events
+
+    //events
     event CHDMinted(address _to, uint256 _amount);
     event CHDBurned(address _from, uint256 _amount);
 
+    //functions
     /**
      * @dev constructor to initialize contract and token
      */
@@ -177,26 +179,22 @@ contract CHD is Token{
      * @dev allows the charon contract to burn tokens of users
      * @param _from address to burn tokens of
      * @param _amount amount of tokens to burn
-     * @return bool of success
      */
-    function burnCHD(address _from, uint256 _amount) external returns(bool){
-        require(msg.sender == charon,"caller must be charon");
+    function burnCHD(address _from, uint256 _amount) external{
+        require(msg.sender == charon);
         _burn(_from, _amount);
         emit CHDBurned(_from,_amount);
-        return true;
     }
     
     /**
      * @dev allows the charon contract to mint chd tokens
      * @param _to address to mint tokens to
      * @param _amount amount of tokens to mint
-     * @return bool of success
      */
-    function mintCHD(address _to, uint256 _amount) external returns(bool){
-        require(msg.sender == charon, "caller must be charon");
+    function mintCHD(address _to, uint256 _amount) external{
+        require(msg.sender == charon);
         _mint(_to,_amount);
         emit CHDMinted(_to,_amount);
-        return true;
     }
 }
 

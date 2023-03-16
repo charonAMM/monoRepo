@@ -1,24 +1,22 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.17;
 
-/**
- * @dev Interface of the ERC20 standard as defined in the EIP.
- */
 interface IERC20 {
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    function approve(address _spender, uint256 _amount) external returns (bool);
-    function transfer(address _to, uint256 _amount) external returns (bool);
-    function transferFrom(address _from,address _to,uint256 _amount) external returns (bool);
     function allowance(address _owner, address _spender) external view returns (uint256);
+    function approve(address _spender, uint256 _amount) external returns (bool);
     function balanceOf(address _account) external view returns (uint256);
     function totalSupply() external view returns (uint256);
+    function transfer(address _to, uint256 _amount) external returns (bool);
+    function transferFrom(address _from,address _to,uint256 _amount) external returns (bool);
 }
 
 
 interface ICFC {
     function addFees(uint256 _amount, bool _isCHD) external;
 }
+
 
 
 /**
@@ -81,7 +79,7 @@ contract Token{
         _move(_from,_to,_amount);
         if (msg.sender != _from) {
             userAllowance[_from][msg.sender] = userAllowance[_from][msg.sender] -  _amount;
-            emit Approval(msg.sender, _to, userAllowance[_from][msg.sender]);
+            emit Approval(_from, msg.sender, userAllowance[_from][msg.sender]);
         }
         return true;
     }
@@ -140,17 +138,6 @@ contract Token{
 
     /**Internal Functions */
     /**
-     * @dev mints tokens
-     * @param _to address of recipient
-     * @param _amount amount of token to send
-     */
-    function _mint(address _to,uint256 _amount) internal {
-        balance[_to] = balance[_to] + _amount;
-        supply = supply + _amount;
-        emit Transfer(address(0), _to, _amount);
-    }
-
-    /**
      * @dev burns tokens
      * @param _from address to burn tokens from
      * @param _amount amount of token to burn
@@ -159,6 +146,17 @@ contract Token{
         balance[_from] = balance[_from] - _amount;//will overflow if too big
         supply = supply - _amount;
         emit Transfer(_from, address(0), _amount);
+    }
+    
+    /**
+     * @dev mints tokens
+     * @param _to address of recipient
+     * @param _amount amount of token to send
+     */
+    function _mint(address _to,uint256 _amount) internal {
+        balance[_to] = balance[_to] + _amount;
+        supply = supply + _amount;
+        emit Transfer(address(0), _to, _amount);
     }
 
     /**
@@ -173,6 +171,7 @@ contract Token{
         emit Transfer(_src, _dst, _amount);
     }
 }
+
 /**
  @title Auction
  @dev charon incentive token (CIT), a token with an auction for minting
@@ -181,12 +180,12 @@ contract Auction is Token{
 
     ICFC public charonFeeContract;
     IERC20 public bidToken;
-    uint256 public auctionFrequency;
-    uint256 public mintAmount;
+    uint256 public auctionFrequency;//auction frequency in seconds
+    uint256 public mintAmount;//mint amount CIT per auction round
 
     //bid variables
     uint256 public currentTopBid;
-    uint256 public endDate;
+    uint256 public endDate;//end date of current auction round
     address public topBidder;
 
     //events
@@ -203,21 +202,19 @@ contract Auction is Token{
      * @param _cfc address of charon fee contract for passing auction proceeds
      * @param _name string name of CIT token
      * @param _symbol string symbol of CIT token
-     * @param _initSupply init base supply sent to msg.sender
      */
     constructor(address _bidToken,
                 uint256 _mintAmount,
                 uint256 _auctionFrequency,
                 address _cfc,
                 string memory _name,
-                string memory _symbol,
-                uint256 _initSupply) Token(_name,_symbol){
+                string memory _symbol) Token(_name,_symbol){
         bidToken = IERC20(_bidToken);
         mintAmount = _mintAmount;
         auctionFrequency = _auctionFrequency;
         charonFeeContract = ICFC(_cfc);
         endDate = block.timestamp + _auctionFrequency;
-        _mint(msg.sender,_initSupply);
+        _mint(msg.sender,_mintAmount);
     }
 
     /**
@@ -247,7 +244,7 @@ contract Auction is Token{
             charonFeeContract.addFees(currentTopBid,false);
         }
         emit AuctionClosed(topBidder, currentTopBid);
-        endDate = endDate + auctionFrequency; // if no one does this func for a week, you win on zero bids
+        endDate = block.timestamp + auctionFrequency; // just restart it...
         topBidder = msg.sender;
         currentTopBid = 0;
         emit NewTopBid(msg.sender, 0);

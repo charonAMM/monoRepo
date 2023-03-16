@@ -7,7 +7,7 @@ interface IOracle {
 
 interface ICharon {
     function addRewards(uint256 _toUsers, uint256 _toLPs, uint256 _toOracle,bool _isCHD) external;
-    function getTokens() external view returns(address,address);
+    function token() external view returns(IERC20);
 }
 
 /**
@@ -109,25 +109,29 @@ contract CFC is MerkleTree{
         uint256 totalSupply;//total supply of CIT tokens for calculating payments to holders
         uint256 chdRewardsPerToken;//chd tokens due to each holder of cit tokens
         uint256 baseTokenRewardsPerToken;//base tokens due to each holder of cit tokens
+        uint256 feePeriodToDistributeCHD;//amount to distribute left in this round
+        uint256 feePeriodToDistributeToken;//amount to distribute left in this round
     }
 
-    uint256 public CITChain; //chain that CIT token is on
-    uint256 public toOracle;//percent (e.g. 100% = 100e18) going to the oracle provider on this chain
-    uint256 public toLPs;//percent (e.g. 100% = 100e18) going to LP's on this chain
-    uint256 public toHolders;//percent (e.g. 100% = 100e18) going to Holders of the governance token
-    uint256 public toUsers;//percent (e.g. 100% = 100e18) going to subsidize users (pay to mint CHD)
+    address public cit;//CIT address (on mainnet ethereum)
+    bool private _lock; //reentrant blocker
+    uint256 public citChain; //chain that CIT token is on
     uint256 public toDistributeToken;//amount of baseToken reward to distribute in contract
     uint256 public toDistributeCHD;//amount of chd in contract to distribute as rewards
+    uint256 public toHolders;//percent (e.g. 100% = 100e18) going to Holders of the governance token
+    uint256 public toLPs;//percent (e.g. 100% = 100e18) going to LP's on this chain
+    uint256 public toOracle;//percent (e.g. 100% = 100e18) going to the oracle provider on this chain
     uint256 public totalDistributedToken; //amount of all distributions baseToken
     uint256 public totalDistributedCHD;//amount of all distributions CHD
+    uint256 public toUsers;//percent (e.g. 100% = 100e18) going to subsidize users (pay to mint CHD)
     uint256[] public feePeriods;//a list of block numbers corresponding to fee periods
-    mapping(uint256 => FeePeriod) feePeriodByTimestamp; //gov token balance
-    mapping(uint256 => mapping(address => bool)) didClaim;//shows if a user already claimed reward
+    mapping(uint256 => FeePeriod) public feePeriodByTimestamp; //gov token balance
+    mapping(uint256 => mapping(address => bool)) public didClaim;//shows if a user already claimed reward
     ICharon public charon;//instance of charon on this chain
-    IOracle public oracle;//oracle for reading cross-chain Balances
-    address public CIT;//CIT address (on mainnet ethereum)
     IERC20 public token;//ERC20 base token instance
     IERC20 public chd;//chd token instance
+    IOracle public oracle;//oracle for reading cross-chain Balances
+
 
     /*Events*/
     event FeeAdded(uint256 _amount, bool _isCHD);
@@ -145,6 +149,7 @@ contract CFC is MerkleTree{
      * @param _toUsers percentage (100% = 100e18) given to chd minters (users)
      */
     constructor(address _charon, address _oracle, uint256 _toOracle, uint256 _toLPs, uint256 _toHolders, uint256 _toUsers){
+        require(_toOracle + _toLPs + _toHolders + _toUsers == 100 ether, "should be 100%");
         charon = ICharon(_charon);
         oracle = IOracle(_oracle);
         toOracle = _toOracle;
@@ -154,15 +159,7 @@ contract CFC is MerkleTree{
         uint256 _endDate = block.timestamp + 30 days;
         feePeriods.push(_endDate);
         feePeriodByTimestamp[_endDate].endDate = _endDate;
-        (,address _b) = charon.getTokens();
-        token = IERC20(_b);
-    }
-
-    function setCIT(address _cit, uint256 _chainID, address _chd) external{
-        require(CIT == address(0), "cit already set");
-        CITChain = _chainID;
-        CIT = _cit;
-        chd = IERC20(_chd);
+        token = charon.token();
     }
 
     /**
@@ -170,19 +167,19 @@ contract CFC is MerkleTree{
      * @param _amount amount of tokens being sent to contract
      * @param _isCHD bool whether the token is CHD (base token if false)
      */
-    function addFees(uint256 _amount, bool _isCHD) external{
+    function addFees(uint256 _amount, bool _isCHD) public{
         //send LP and User rewards over now
         uint256 _toLPs = _amount * toLPs / 100e18;
         uint256 _toUsers = _amount * toUsers / 100e18;
         uint256 _toOracle = _amount * toOracle / 100e18;
         if(_isCHD){
-            require(chd.transferFrom(msg.sender,address(this), _amount), "should transfer amount");
+            if(!_lock){require(chd.transferFrom(msg.sender,address(this), _amount), "should transfer amount");}
             chd.approve(address(charon),_toUsers + _toLPs + _toOracle);
             toDistributeCHD += _amount;
             charon.addRewards(_toUsers,_toLPs,_toOracle,true);
         }
         else{
-            require(token.transferFrom(msg.sender,address(this), _amount), "should transfer amount");
+            if(!_lock){require(token.transferFrom(msg.sender,address(this), _amount), "should transfer amount");}
             token.approve(address(charon),_toUsers + _toLPs + _toOracle);
             toDistributeToken += _amount;
             charon.addRewards(_toUsers,_toLPs,_toOracle,false);
@@ -200,6 +197,9 @@ contract CFC is MerkleTree{
      */
     function claimRewards(uint256 _timestamp, address _account, uint256 _balance, bytes32[] calldata _hashes, bool[] calldata _right) external{
         FeePeriod storage _f = feePeriodByTimestamp[_timestamp];
+        if(feePeriods.length >= 5){
+            require(feePeriods[feePeriods.length - 5] < _timestamp, "too late too claim");
+        }
         require(!didClaim[_timestamp][_account], "can only claim once");
         didClaim[_timestamp][_account] = true;
         bytes32 _myHash = keccak256(abi.encode(_account,_balance));
@@ -211,6 +211,8 @@ contract CFC is MerkleTree{
         require(_inTree(_f.rootHash, _hashes, _right));//checks if your balance/account is in the merkleTree
         uint256 _baseTokenRewards = _f.baseTokenRewardsPerToken * _balance / 1e18;
         uint256 _chdRewards =  _f.chdRewardsPerToken * _balance /1e18;
+        _f.feePeriodToDistributeCHD -= _chdRewards;
+        _f.feePeriodToDistributeToken -= _baseTokenRewards;
         if(_baseTokenRewards > 0){
             require(token.transfer(_account, _baseTokenRewards));
         }
@@ -226,7 +228,7 @@ contract CFC is MerkleTree{
     function endFeeRound() external{
         FeePeriod storage _f = feePeriodByTimestamp[feePeriods[feePeriods.length - 1]];
         require(block.timestamp > _f.endDate + 12 hours, "round should be over and time for tellor");
-        bytes memory _val = oracle.getRootHashAndSupply(_f.endDate,CITChain,CIT);
+        bytes memory _val = oracle.getRootHashAndSupply(_f.endDate,citChain,cit);
         (bytes32 _rootHash, uint256 _totalSupply) = abi.decode(_val,(bytes32,uint256));
         _f.rootHash = _rootHash;
         _f.totalSupply = _totalSupply;
@@ -235,14 +237,33 @@ contract CFC is MerkleTree{
         feePeriodByTimestamp[_endDate].endDate = _endDate;
         _f.baseTokenRewardsPerToken = toDistributeToken * toHolders / (_totalSupply * 100);
         _f.chdRewardsPerToken = toDistributeCHD * toHolders  / (_totalSupply * 100);
-        //transfers
+        _f.feePeriodToDistributeCHD = toDistributeCHD * toHolders / 100e18;
+        _f.feePeriodToDistributeToken = toDistributeToken * toHolders / 100e18;
         toDistributeToken = 0;
         toDistributeCHD = 0;
+        if(feePeriods.length >= 5){
+            _lock = true;
+            addFees(feePeriodByTimestamp[feePeriods[feePeriods.length - 5]].feePeriodToDistributeToken,false);
+            addFees(feePeriodByTimestamp[feePeriods[feePeriods.length - 5]].feePeriodToDistributeCHD,true);
+            _lock = false;
+        }
         emit FeeRoundEnded(_f.endDate, _f.baseTokenRewardsPerToken, _f.chdRewardsPerToken);
     }
 
-    //Getters
+    /** 
+     * @dev getter to show all fee period end dates
+     * @param _cit address variable of the CIT token on mainchain
+     * @param _chainId chainID of the main chain
+     * @param _chd chd token address on this chain
+     */
+    function setCit(address _cit, uint256 _chainId, address _chd) external{
+        require(cit == address(0), "cit already set");
+        citChain = _chainId;
+        cit = _cit;
+        chd = IERC20(_chd);
+    }
 
+    //Getters
     /** 
      * @dev getter to show all fee period end dates
      * @return returns uint array of all fee period end dates

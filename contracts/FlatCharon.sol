@@ -2,24 +2,25 @@
 pragma solidity 0.8.17;
 
 
+
 /**
  @title Token
  @dev base ERC20 to act as token underlying CHD and pool tokens
  */
 contract Token{
 
-    /*Storage*/
+    //storage
     string  private tokenName;
     string  private tokenSymbol;
     uint256 internal supply;//totalSupply
     mapping(address => uint) balance;
     mapping(address => mapping(address=>uint)) userAllowance;//allowance
 
-    /*Events*/
+    //events
     event Approval(address indexed _src, address indexed _dst, uint _amt);
     event Transfer(address indexed _src, address indexed _dst, uint _amt);
 
-    /*Functions*/
+    //functions
     /**
      * @dev Constructor to initialize token
      * @param _name of token
@@ -62,7 +63,7 @@ contract Token{
         _move(_from,_to,_amount);
         if (msg.sender != _from) {
             userAllowance[_from][msg.sender] = userAllowance[_from][msg.sender] -  _amount;
-            emit Approval(msg.sender, _to, userAllowance[_from][msg.sender]);
+            emit Approval(_from, msg.sender, userAllowance[_from][msg.sender]);
         }
         return true;
     }
@@ -119,7 +120,7 @@ contract Token{
         return supply;
     }
 
-    /**Internal Functions */
+    //internal
     /**
      * @dev burns tokens
      * @param _from address to burn tokens from
@@ -155,14 +156,20 @@ contract Token{
     }
 }
 
+/**
+ @title chd
+ @dev chd is the synthetic representation of deposits on other AMM's created by the charon system
+**/    
 contract CHD is Token{
 
-    //Storage
+    //storage
     address public charon;//address of the charon contract
-    //Events
+
+    //events
     event CHDMinted(address _to, uint256 _amount);
     event CHDBurned(address _from, uint256 _amount);
 
+    //functions
     /**
      * @dev constructor to initialize contract and token
      */
@@ -174,26 +181,22 @@ contract CHD is Token{
      * @dev allows the charon contract to burn tokens of users
      * @param _from address to burn tokens of
      * @param _amount amount of tokens to burn
-     * @return bool of success
      */
-    function burnCHD(address _from, uint256 _amount) external returns(bool){
-        require(msg.sender == charon,"caller must be charon");
+    function burnCHD(address _from, uint256 _amount) external{
+        require(msg.sender == charon);
         _burn(_from, _amount);
         emit CHDBurned(_from,_amount);
-        return true;
     }
     
     /**
      * @dev allows the charon contract to mint chd tokens
      * @param _to address to mint tokens to
      * @param _amount amount of tokens to mint
-     * @return bool of success
      */
-    function mintCHD(address _to, uint256 _amount) external returns(bool){
-        require(msg.sender == charon, "caller must be charon");
+    function mintCHD(address _to, uint256 _amount) external{
+        require(msg.sender == charon);
         _mint(_to,_amount);
         emit CHDMinted(_to,_amount);
-        return true;
     }
 }
 
@@ -216,7 +219,7 @@ contract MerkleTreeWithHistory {
   // make public for debugging, make all private for deployment
   // filledSubtrees and roots could be bytes32[size], but using mappings makes it cheaper because
   // it removes index range check on every interaction
-  mapping(uint256 => bytes32) public filledSubtrees;
+  mapping(uint256 => bytes32) filledSubtrees;
   mapping(uint256 => bytes32) roots;
   mapping(uint256 => bytes32) zeros;
   uint32 public constant ROOT_HISTORY_SIZE = 100;
@@ -230,8 +233,8 @@ contract MerkleTreeWithHistory {
     * @param _hasher address of poseidon hasher
     */
   constructor(uint32 _levels, address _hasher) {
-    require(_levels > 0, "_levels should be greater than zero");
-    require(_levels < 32, "_levels should be less than 32");
+    require(_levels > 0);
+    require(_levels < 32);
     levels = _levels;
     hasher = IHasher(_hasher);
     zeros[0] = bytes32(ZERO_VALUE);
@@ -252,8 +255,8 @@ contract MerkleTreeWithHistory {
     * @return bytes32 hash of input
     */
   function hashLeftRight(bytes32 _left, bytes32 _right) public view returns (bytes32) {
-    require(uint256(_left) < FIELD_SIZE, "_left should be inside the field");
-    require(uint256(_right) < FIELD_SIZE, "_right should be inside the field");
+    require(uint256(_left) < FIELD_SIZE);
+    require(uint256(_right) < FIELD_SIZE);
     bytes32[2] memory _input;
     _input[0] = _left;
     _input[1] = _right;
@@ -301,7 +304,7 @@ contract MerkleTreeWithHistory {
     if(_i <= 32){
       return zeros[_i];
     }
-    else revert("Index out of bounds");
+    else revert();
   }
 
   /*internal functions*/
@@ -313,7 +316,7 @@ contract MerkleTreeWithHistory {
     */
   function _insert(bytes32 _leaf1, bytes32 _leaf2) internal returns (uint32 _nextIndex) {
     _nextIndex = nextIndex;
-    require(_nextIndex != uint32(2)**levels, "Merkle tree is full. No more leaves can be added");
+    require(_nextIndex != uint32(2)**levels);
     uint32 _currentIndex = _nextIndex / 2;
     bytes32 _currentLevelHash = hashLeftRight(_leaf1, _leaf2);
     bytes32 _left;
@@ -336,7 +339,6 @@ contract MerkleTreeWithHistory {
     nextIndex = _nextIndex + 2;
   }
 }
-
 
 /**
  @title math
@@ -450,14 +452,13 @@ contract Math{
             uint256 _zaz = _bmul((BONE - _normalizedWeight), _swapFee); 
             _tokenAmountOut = _bmul(_tokenAmountOutBeforeSwapFee,(BONE - _zaz));
         }
-        else{
+        else{//this portion handles when it's a swap, where you have to burn the chd instead of using calcOutGivenIn
             uint256 _adjustedIn = BONE - _swapFee;
             _adjustedIn = _bmul(_amountIn, _adjustedIn);
             uint256 _y = _bdiv(BONE, (_inSupply));
             uint256 _bar = _bpow((BONE - _y),_amountIn);
             _tokenAmountOut = _tokenBalanceOut - _bmul(_tokenBalanceOut, _bar);
         }
-
     }
 
     /**
@@ -481,6 +482,14 @@ contract Math{
     }
 
     //internal functions
+    /**
+     * @dev absolute value function
+     * @param _x integer input to convert to uint256 absolute value
+     */
+    function _abs(int _x) internal pure returns (uint256) {
+        return uint256(_x >= 0 ? _x : -_x);
+    }
+    
     /**
      * @dev division of two numbers but adjusts as if decimals
      * @param _a numerator
@@ -527,13 +536,13 @@ contract Math{
     function _bpow(uint256 _base, uint256 _exp) internal pure returns (uint256){
         require(_base >= 1 wei, "ERR_POW_BASE_TOO_LOW");
         require(_base <= ((2 * BONE) - 1 wei), "ERR_POW_BASE_TOO_HIGH");
-        uint256 _whole  = _bfloor(_exp);   
+        uint256 _whole  = _bfloor(_exp);   //0
         uint256 _remain = _exp - _whole;
-        uint256 _wholePow = _bpowi(_base, _btoi(_whole));
+        uint256 _wholePow = _bpowi(_base, _btoi(_whole));//_base
         if (_remain == 0) {
             return _wholePow;
         }
-        uint256 _partialResult = _bpowApprox(_base, _remain, BONE / 10**10);
+        uint256 _partialResult = _bpowApprox(_base, _remain, BONE / 10**10);//_base,5e18,10e8
         return _bmul(_wholePow, _partialResult);
     }
 
@@ -549,15 +558,15 @@ contract Math{
             pure 
             returns (uint256 _sum)
         {
-        uint256 _a = _exp;
+        uint256 _a = _exp;//5e18
         (uint256 _x, bool _xneg)  = _bsubSign(_base, BONE);
         uint256 _term = BONE;
         _sum = _term;
         bool _negative = false;
         for (uint256 _i = 1; _term >= _precision; _i++) {
-            uint256 _bigK = _i * BONE;
-            (uint256 _c, bool _cneg) = _bsubSign(_a, _bigK - BONE);
-            _term = _bmul(_term, _bmul(_c, _x));
+            uint256 _bigK = _i * BONE;//10e18
+            (uint256 _c, bool _cneg) = _bsubSign(_a, _bigK - BONE);//(5e18,false)
+            _term = _bmul(_term, _bmul(_c, _x));//1e18*(5e18* - _base)
             _term = _bdiv(_term, _bigK);
             if (_term == 0) break;
             if (_xneg) _negative = !_negative;
@@ -577,7 +586,7 @@ contract Math{
      * @return _z uint256 result of pow
      */
     function _bpowi(uint256 _a, uint256 _n) internal pure returns (uint256 _z){
-        _z = _n % 2 != 0 ? _a : BONE;
+        _z = _n % 2 != 0 ? _a : BONE;//_a
         for (_n /= 2; _n != 0; _n /= 2) {
             _a = _bmul(_a, _a);
             if (_n % 2 != 0) {
@@ -610,15 +619,28 @@ contract Math{
     }
 }
 
+
+
+/**
+ * @dev Interface of the charon fee contract
+ */
 interface ICFC {
     function addFees(uint256 _amount, bool _isCHD) external;
 }
 
+
+/**
+ @title IOracle
+ @dev Interface of the Oracle contract for the CharonAMM
+ **/
 interface IOracle {
-    function getCommitment(bytes memory _inputData) external returns(bytes memory);
+    function getCommitment(bytes memory _inputData) external returns(bytes memory _value, address _caller);
     function sendCommitment(bytes memory _data) external;
 }
-
+/**
+ @title IERC20
+ @dev Interface of the ERC20 standard as defined in the EIP.
+ **/
 interface IERC20 {
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
@@ -630,6 +652,12 @@ interface IERC20 {
     function totalSupply() external view returns (uint256);
 }
 
+
+
+/**
+ @title IVerifier
+ @dev Interface for the verifier contracts created by the circom files
+ **/
 interface IVerifier {
  function verifyProof(uint[2] memory _a,uint[2][2] memory _b,uint[2] memory _c,uint[8] memory _input) external view returns(bool);
  function verifyProof(uint[2] memory _a,uint[2][2] memory _b,uint[2] memory _c,uint[22] memory _input) external view returns(bool);
@@ -688,8 +716,8 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
     struct ExtData {
       address recipient;//party recieving CHD
       int256 extAmount;//amount being sent
-      address relayer;//relayer of signed message (adds anonymity)
       uint256 fee;//fee given to relayer
+      uint256 rebate;//amount taken from relayer and given to recipient
       bytes encryptedOutput1;//encrypted UTXO output of txn
       bytes encryptedOutput2;//other encrypted UTXO of txn (must spend all in UTXO design)
     }
@@ -709,43 +737,37 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
     }
 
     CHD public chd;//address/implementation of chd token
+    Commitment[] depositCommitments;//all commitments deposited by tellor in an array.  depositID is the position in array
     IERC20 public immutable token;//base token address/implementation for the charonAMM
-    address[] public oracles;//address of the oracle to use for the system
     IVerifier public immutable verifier2; //implementation/address of the two input veriifier contract
     IVerifier public immutable verifier16;//implementation/address of the sixteen input veriifier contract
-    Commitment[] depositCommitments;//all commitments deposited by tellor in an array.  depositID is the position in array
     PartnerContract[] partnerContracts;//list of connected contracts for this deployment
     address public controller;//controller adddress (used for initializing contracts, then should be CFC for accepting fees)
-    bool public finalized;//bool if contracts are initialized
+    address[] oracles;//address of the oracle to use for the system
+    bool private _lock;//to prevent reentracy
     uint256 public immutable chainID; //chainID of this charon instance
     uint256 public immutable fee;//fee when liquidity is withdrawn or trade happens (1e18 = 100% fee)
+    uint256 public oracleTokenFunds;//amount of token funds to be paid to reporters
+    uint256 public oracleCHDFunds;//amount of chd funds to be paid to reporters
     uint256 public recordBalance;//balance of asset stored in this contract
     uint256 public recordBalanceSynth;//balance of asset bridged from other chain
     uint256 public userRewards;//amount of baseToken user rewards in contract
     uint256 public userRewardsCHD;//amount of chd user rewards in contract
-    uint256 public oracleTokenFunds;//amount of token funds to be paid to reporters
-    uint256 public oracleCHDFunds;//amount of chd funds to be paid to reporters
-    mapping(bytes32 => uint256) public depositIdByCommitmentHash;//gives you a deposit ID (used by tellor) given a commitment
-    mapping(bytes32 => bool) public nullifierHashes;//zk proof hashes to tell whether someone withdrew
+    mapping(bytes32 => bool) nullifierHashes;//zk proof hashes to tell whether someone withdrew
+    mapping(bytes32 => uint256) depositIdByCommitmentHash;//gives you a deposit ID (used by tellor) given a commitment
+   
 
     //events
-    event DepositToOtherChain(bool _isCHD, address _sender, uint256 _timestamp, uint256 _tokenAmount);
+    event DepositToOtherChain(bool _isCHD, address _sender, uint256 _depositId, int256 _amount);
     event LPDeposit(address _lp,uint256 _poolAmountOut);
     event RewardAdded(uint256 _amount,bool _isCHD);
     event LPWithdrawal(address _lp, uint256 _poolAmountIn);
-    event NewCommitment(bytes32 _commitment, uint256 _index, bytes _encryptedOutput);
+    event NewCommitment(bytes32 _commitment, uint256 _index, bytes _encryptedOutput, bool _isDeposit);
     event NewNullifier(bytes32 _nullifier);
     event OracleDeposit(uint256 _oracleIndex,bytes _inputData);
     event Swap(address _user,bool _inIsCHD,uint256 _tokenAmountIn,uint256 _tokenAmountOut);
 
-    //modifiers
-    /**
-     * @dev requires a function to be finalized or the caller to be the controlller
-    */
-    modifier _finalized_() {
-      if(!finalized){require(msg.sender == controller);}_;
-    }
-
+    //functions
     /**
      * @dev constructor to launch charon
      * @param _verifier2 address of the verifier contract (circom generated sol)
@@ -789,6 +811,7 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      * @param _isCHD bool if the token is chd (baseToken if false)
      */
     function addRewards(uint256 _toUsers, uint256 _toLPs, uint256 _toOracle,bool _isCHD) external{
+      require(_lock == false);
       if(_isCHD){
         require(chd.transferFrom(msg.sender,address(this),_toUsers + _toLPs + _toOracle));
         recordBalanceSynth += _toLPs;
@@ -809,45 +832,40 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      * @param _proofArgs proofArgs of deposit commitment generated by zkproof
      * @param _extData data pertaining to deposit
      * @param _isCHD whether deposit is CHD, false if base asset deposit
+     * @param _maxOut max amount of token you're willing to spend on given CHD amount
      * @return _depositId returns the depositId (position in commitment array)
      */
-    function depositToOtherChain(Proof memory _proofArgs,ExtData memory _extData, bool _isCHD) external _finalized_ returns(uint256 _depositId){
-        require(_extData.extAmount > 0, "must deposit a positive amount");
-        Commitment memory _c = Commitment(_extData,_proofArgs);
-        depositCommitments.push(_c);
+    function depositToOtherChain(Proof memory _proofArgs,ExtData memory _extData, bool _isCHD, uint256 _maxOut) external returns(uint256 _depositId){
+        require(_extData.extAmount > 0);
+        require(_lock == false);
+        depositCommitments.push(Commitment(_extData,_proofArgs));
         _depositId = depositCommitments.length;
         bytes32 _hashedCommitment = keccak256(abi.encode(_proofArgs.proof,_proofArgs.publicAmount,_proofArgs.root));
         depositIdByCommitmentHash[_hashedCommitment] = _depositId;
-        uint256 _tokenAmount = 0;
+        uint256 _tokenAmount = calcInGivenOut(recordBalance,recordBalanceSynth,uint256(_extData.extAmount),0);
         if (_isCHD){
           chd.burnCHD(msg.sender,uint256(_extData.extAmount));
         }
         else{
-          _tokenAmount = calcInGivenOut(recordBalance,recordBalanceSynth,uint256(_extData.extAmount),0);
+          require(_tokenAmount <= _maxOut);
           require(token.transferFrom(msg.sender, address(this), _tokenAmount));
+          recordBalance += _tokenAmount;
         }
         uint256 _min = userRewards / 1000;
-        if(_min > 0){
-          if (_min > _tokenAmount / 50){
-            _min = _tokenAmount / 50;
-          }
-          token.transfer(msg.sender, _min);
+        if(_min <= _tokenAmount && _min > 0){ 
+          require(token.transfer(msg.sender, _min));
           userRewards -= _min;
         }
         _min = userRewardsCHD / 1000;
-        if(_min > 0){
-          if (_min > _tokenAmount / 50){
-            _min = _tokenAmount / 50;
-          }
+        if(_min <= _abs(_extData.extAmount) && _min > 0){
           chd.transfer(msg.sender, _min);
           userRewardsCHD -= _min;
         }
         for(uint256 _i = 0; _i<=oracles.length-1; _i++){
           IOracle(oracles[_i]).sendCommitment(getOracleSubmission(_depositId));
         }
-        _transact(_proofArgs, _extData);//automatically adds your deposit to this chain (improve anonymity set)
-        recordBalance += _tokenAmount;
-        emit DepositToOtherChain(_isCHD,msg.sender, block.timestamp, _tokenAmount);
+        _transact(_proofArgs, _extData, true);//automatically adds your deposit to this chain (improve anonymity set)
+        emit DepositToOtherChain(_isCHD, msg.sender, _depositId, _extData.extAmount);
     }
 
     /**
@@ -866,16 +884,14 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
                       address _chd,
                       address _cfc) 
                       external{
-        require(msg.sender == controller, "should be controller");
-        require(!finalized, "should be finalized");
-        finalized = true;
+        require(msg.sender == controller);
+        require(address(chd) == address(0));
         recordBalance = _balance;
         recordBalanceSynth = _synthBalance;
         chd = CHD(_chd);
-        require (token.transferFrom(msg.sender, address(this), _balance));
+        require(token.transferFrom(msg.sender, address(this), _balance));
         chd.mintCHD(address(this),_synthBalance);
         _mint(msg.sender,100 ether);
-        require(_partnerAddys.length == _partnerChains.length, "length should be the same");
         for(uint256 _i; _i < _partnerAddys.length; _i++){
           partnerContracts.push(PartnerContract(_partnerChains[_i],_partnerAddys[_i]));
         } 
@@ -890,19 +906,19 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      */
     function lpDeposit(uint256 _poolAmountOut, uint256 _maxCHDIn, uint256 _maxBaseAssetIn)
         external
-        _finalized_
     {   
+        require(_lock == false);
         uint256 _ratio = _bdiv(_poolAmountOut, supply);
-        require(_ratio > 0, "should not be 0 for inputs");
+        require(_ratio > 0);
         uint256 _baseAssetIn = _bmul(_ratio, recordBalance);
-        require(_baseAssetIn <= _maxBaseAssetIn, "too big baseDeposit required");
+        require(_baseAssetIn <= _maxBaseAssetIn, "maxBaseAssetIn hit");
         recordBalance = recordBalance + _baseAssetIn;
         uint256 _CHDIn = _bmul(_ratio, recordBalanceSynth);
-        require(_CHDIn <= _maxCHDIn, "too big chd deposit required");
+        require(_CHDIn <= _maxCHDIn, "maxCHDIn hit");
         recordBalanceSynth = recordBalanceSynth + _CHDIn;
         _mint(msg.sender,_poolAmountOut);
-        require (token.transferFrom(msg.sender,address(this), _baseAssetIn));
-        require(chd.transferFrom(msg.sender, address(this),_CHDIn));
+        require(token.transferFrom(msg.sender,address(this), _baseAssetIn));
+        chd.transferFrom(msg.sender, address(this),_CHDIn);
         emit LPDeposit(msg.sender,_poolAmountOut);
     }
 
@@ -911,16 +927,17 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      * @param _tokenAmountIn amount of CHD to deposit
      * @param _minPoolAmountOut minimum number of pool tokens you need out
      */
-    function lpSingleCHD(uint256 _tokenAmountIn,uint256 _minPoolAmountOut) external _finalized_{
+    function lpSingleCHD(uint256 _tokenAmountIn,uint256 _minPoolAmountOut) external{
+        require(_lock == false);
         uint256 _poolAmountOut = calcPoolOutGivenSingleIn(
                             recordBalanceSynth,//pool tokenIn balance
                             supply,
                             _tokenAmountIn//amount of token In
                         );
         recordBalanceSynth += _tokenAmountIn;
-        require(_poolAmountOut >= _minPoolAmountOut, "not enough squeeze");
+        require(_poolAmountOut >= _minPoolAmountOut);
         _mint(msg.sender,_poolAmountOut);
-        require (chd.transferFrom(msg.sender,address(this), _tokenAmountIn));
+        chd.transferFrom(msg.sender,address(this), _tokenAmountIn);
         emit LPDeposit(msg.sender,_poolAmountOut);
     }
 
@@ -933,23 +950,23 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      */
     function lpWithdraw(uint256 _poolAmountIn, uint256 _minCHDOut, uint256 _minBaseAssetOut)
         external
-        _finalized_
         returns (uint256 _tokenAmountOut)
     {
+        require(_lock == false);
         uint256 _exitFee = _bmul(_poolAmountIn, fee);
         uint256 _pAiAfterExitFee = _poolAmountIn - _exitFee;
         uint256 _ratio = _bdiv(_pAiAfterExitFee, supply);
         _burn(msg.sender,_pAiAfterExitFee);//burning the total amount, but not taking out the tokens that are fees paid to the LP
         _tokenAmountOut = _bmul(_ratio, recordBalance);
-        require(_tokenAmountOut != 0, "ERR_MATH_APPROX");
-        require(_tokenAmountOut >= _minBaseAssetOut, "ERR_LIMIT_OUT");
+        require(_tokenAmountOut != 0);
+        require(_tokenAmountOut >= _minBaseAssetOut);
         recordBalance = recordBalance - _tokenAmountOut;
         uint256 _CHDOut = _bmul(_ratio, recordBalanceSynth);
-        require(_CHDOut != 0, "ERR_MATH_APPROX");
-        require(_CHDOut >= _minCHDOut, "ERR_LIMIT_OUT");
+        require(_CHDOut != 0);
+        require(_CHDOut >= _minCHDOut);
         recordBalanceSynth = recordBalanceSynth - _CHDOut;
         require(token.transfer(msg.sender, _tokenAmountOut));
-        require(chd.transfer(msg.sender, _CHDOut));
+        chd.transfer(msg.sender, _CHDOut);
         emit LPWithdrawal(msg.sender, _poolAmountIn);
         //now transfer exit fee to CFC
         if(_exitFee > 0){
@@ -971,7 +988,8 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      * @param _poolAmountIn amount of pool tokens to deposit
      * @param _minAmountOut minimum amount of CHD you need out
      */
-    function lpWithdrawSingleCHD(uint256 _poolAmountIn, uint256 _minAmountOut) external _finalized_{
+    function lpWithdrawSingleCHD(uint256 _poolAmountIn, uint256 _minAmountOut) external{
+        require(_lock == false);
         uint256 _tokenAmountOut = calcSingleOutGivenIn(
                             recordBalanceSynth,
                             supply,
@@ -980,38 +998,45 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
                             true
                         );
         recordBalanceSynth -= _tokenAmountOut;
-        require(_tokenAmountOut >= _minAmountOut, "not enough squeeze");
-        uint256 _exitFee = _bmul(_tokenAmountOut, fee);
+        require(_tokenAmountOut >= _minAmountOut);
         _burn(msg.sender,_poolAmountIn);
-        require(chd.transfer(msg.sender, _tokenAmountOut - _exitFee));
+        chd.transfer(msg.sender, _tokenAmountOut);
         emit LPWithdrawal(msg.sender,_poolAmountIn);
-        if(_exitFee > 0){
-          chd.approve(address(controller),_exitFee);
-          ICFC(controller).addFees(_exitFee,true);
-        }
     }
-
     /**
      * @dev reads tellor commitments to allow you to withdraw on this chain
      * @param _oracleIndex index of oracle in oracle array
     * @param _inputData depending on the bridge, it might be needed and lets you specify what you're pulling
      */
     function oracleDeposit(uint256 _oracleIndex, bytes memory _inputData) external{
+        require(_lock == false);
         Proof memory _proof;
         ExtData memory _extData;
         bytes memory _value;
-        _value = IOracle(oracles[_oracleIndex]).getCommitment(_inputData);
+        address _caller;
+        (_value,_caller) = IOracle(oracles[_oracleIndex]).getCommitment(_inputData);
         _proof.inputNullifiers = new bytes32[](2);
-        (_proof.inputNullifiers[0], _proof.inputNullifiers[1], _proof.outputCommitments[0], _proof.outputCommitments[1], _proof.proof) = abi.decode(_value,(bytes32,bytes32,bytes32,bytes32,bytes));
-        _transact(_proof, _extData);
+        (_proof.inputNullifiers[0], _proof.inputNullifiers[1], _proof.outputCommitments[0], _proof.outputCommitments[1], _proof.proof,_extData.encryptedOutput1, _extData.encryptedOutput2) = abi.decode(_value,(bytes32,bytes32,bytes32,bytes32,bytes,bytes,bytes));
+        _transact(_proof, _extData, true);
         //you need this amount to be less than the stake amount, but if this is greater than the gas price to deposit and then report, you don't need to worry about it
-        if(oracleCHDFunds > 1000){
-          chd.transfer(msg.sender,oracleCHDFunds/1000);
-          oracleCHDFunds -= oracleCHDFunds/1000;
+        uint256 _funds;
+        if(oracleCHDFunds > 2000){
+          _funds = oracleCHDFunds/1000;
+          oracleCHDFunds -= _funds;
+          if(_caller != address(0)){
+            _funds = _funds / 2;
+            chd.transfer(_caller, _funds);
+          }
+          chd.transfer(msg.sender,_funds);
         }
-        if(oracleTokenFunds > 1000){
-          token.transfer(msg.sender,oracleTokenFunds/1000);
-          oracleTokenFunds -= oracleTokenFunds/1000;
+        if(oracleTokenFunds > 2000){
+          _funds = oracleTokenFunds/1000;
+          oracleTokenFunds -= _funds;
+          if(_caller != address(0)){
+            _funds = _funds / 2;
+            token.transfer(_caller, _funds);
+          }
+          token.transfer(msg.sender,_funds);
         }
         emit OracleDeposit(_oracleIndex, _inputData);
     }
@@ -1021,7 +1046,7 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
      * @param _inIsCHD bool if token sending in is CHD
      * @param _tokenAmountIn amount of token to send in
      * @param _minAmountOut minimum amount of out token you need
-     * @param _maxPrice max price you're willing to send the pool too
+     * @param _maxPrice max price you're willing to send the pool to
      */
     function swap(
         bool _inIsCHD,
@@ -1029,8 +1054,9 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
         uint256 _minAmountOut,
         uint256 _maxPrice
     )
-        external _finalized_
+        external
         returns (uint256 _tokenAmountOut, uint256 _spotPriceAfter){
+        require(_lock == false);
         uint256 _inRecordBal;
         uint256 _outRecordBal;
         uint256 _exitFee = _bmul(_tokenAmountIn, fee);
@@ -1043,13 +1069,13 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
           _inRecordBal = recordBalance;
           _outRecordBal = recordBalanceSynth;
         }
-        require(_tokenAmountIn <= _bmul(_inRecordBal, MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
+        require(_tokenAmountIn <= _bmul(_inRecordBal, MAX_IN_RATIO));
         uint256 _spotPriceBefore = calcSpotPrice(
                                     _inRecordBal,
                                     _outRecordBal,
                                     0
                                 );
-        require(_spotPriceBefore <= _maxPrice, "ERR_BAD_LIMIT_PRICE");
+        require(_spotPriceBefore <= _maxPrice);
         if(_inIsCHD){ //this is because we burn CHD on swaps (can't leave system w/o burning it)
           _tokenAmountOut = calcSingleOutGivenIn(
                   _outRecordBal,
@@ -1067,11 +1093,11 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
                            0
                         );
         }
-        require(_tokenAmountOut >= _minAmountOut, "ERR_LIMIT_OUT");
-        require(_spotPriceBefore <= _bdiv(_adjustedIn, _tokenAmountOut), "ERR_MATH_APPROX");
+        require(_tokenAmountOut >= _minAmountOut);
+        require(_spotPriceBefore <= _bdiv(_adjustedIn, _tokenAmountOut));
         _outRecordBal -= _tokenAmountOut;
         if(_inIsCHD){
-           require(chd.burnCHD(msg.sender,_adjustedIn));
+           chd.burnCHD(msg.sender,_adjustedIn);
            require(token.transfer(msg.sender,_tokenAmountOut));
            recordBalance -= _tokenAmountOut;
            if(_exitFee > 0){
@@ -1082,7 +1108,7 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
         else{
           _inRecordBal += _adjustedIn;
           require(token.transferFrom(msg.sender,address(this), _tokenAmountIn));
-          require(chd.transfer(msg.sender,_tokenAmountOut));
+          chd.transfer(msg.sender,_tokenAmountOut);
           recordBalance += _adjustedIn;
           recordBalanceSynth -= _tokenAmountOut;
           if(fee > 0){
@@ -1095,8 +1121,8 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
                                 _outRecordBal,
                                 0
                             );
-        require(_spotPriceAfter >= _spotPriceBefore, "ERR_MATH_APPROX");     
-        require(_spotPriceAfter <= _maxPrice, "ERR_LIMIT_PRICE");
+        require(_spotPriceAfter >= _spotPriceBefore);     
+        require(_spotPriceAfter <= _maxPrice);
         emit Swap(msg.sender,_inIsCHD,_tokenAmountIn,_tokenAmountOut);
       }
 
@@ -1105,22 +1131,34 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
       * @param _args proof data for sneding tokens
       * @param _extData external (visible data) to verify proof and pay relayer fee
       */
-      function transact(Proof memory _args, ExtData memory _extData) external _finalized_{
+      function transact(Proof memory _args, ExtData memory _extData) external payable{
+        require(_lock == false);
+        _lock = true;
         int256 _publicAmount = _extData.extAmount - int256(_extData.fee);
         if(_publicAmount < 0){
           _publicAmount = int256(FIELD_SIZE - uint256(-_publicAmount));
         } 
-        require(_args.publicAmount == uint256(_publicAmount), "Invalid public amount");
-        require(isKnownRoot(_args.root), "Invalid merkle root");
-        require(_verifyProof(_args), "Invalid transaction proof");
-        require(uint256(_args.extDataHash) == uint256(keccak256(abi.encode(_extData))) % FIELD_SIZE, "Incorrect external data hash");
+        require(_args.publicAmount == uint256(_publicAmount));
+        require(isKnownRoot(_args.root), "invalid root");
+        require(_verifyProof(_args), "invalid proof");
+        require(uint256(_args.extDataHash) == uint256(keccak256(abi.encode(_extData))) % FIELD_SIZE, "incorrect ed hash");
         if (_extData.extAmount < 0){
-          require(chd.mintCHD(_extData.recipient, uint256(-_extData.extAmount)));
+          chd.mintCHD(_extData.recipient, uint256(-_extData.extAmount));
         }
+        _transact(_args, _extData, false);
+        uint256 _outRebate;
         if(_extData.fee > 0){
-          require(chd.mintCHD(_extData.relayer,_extData.fee));
+          chd.mintCHD(msg.sender,_extData.fee);
+          if(_extData.rebate > 0){
+            _outRebate = calcOutGivenIn(recordBalanceSynth,recordBalance,_extData.rebate,0);
+            require(_extData.fee > _extData.rebate, "rebate too big");
+            //transfer base token from relayer to recipient
+            //allows a user to get some funds to a blank addy
+            payable(_extData.recipient).transfer(_outRebate);
+          }
         }
-        _transact(_args, _extData);
+        require(msg.value == _outRebate, "msg value != rebate");
+        _lock = false;
     }
 
     //getters
@@ -1146,17 +1184,20 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
     function getOracles() external view returns(address[] memory){
       return oracles;
     }
+
     /**
      * @dev returns the data for an oracle submission on another chain given a depositId
      */
-    function getOracleSubmission(uint256 _depositId) public view returns(bytes memory _value){
-      Proof memory _p = depositCommitments[_depositId-1].proof;
-      _value = abi.encode(
-        _p.inputNullifiers[0],
-        _p.inputNullifiers[1],
-        _p.outputCommitments[0],
-        _p.outputCommitments[1],
-        _p.proof);
+    function getOracleSubmission(uint256 _depositId) public view returns(bytes memory){
+      Commitment memory _p = depositCommitments[_depositId-1];
+      return abi.encode(
+        _p.proof.inputNullifiers[0],
+        _p.proof.inputNullifiers[1],
+        _p.proof.outputCommitments[0],
+        _p.proof.outputCommitments[1],
+        _p.proof.proof,
+        _p.extData.encryptedOutput1,
+        _p.extData.encryptedOutput2);
     }
 
     /**
@@ -1168,19 +1209,10 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
 
     /**
      * @dev allows you to check the spot price of the token pair
-     * @return _spotPrice uint256 price of the pair
+     * @return uint256 price of the pair
      */
-    function getSpotPrice() external view returns(uint256 _spotPrice){
+    function getSpotPrice() external view returns(uint256){
       return calcSpotPrice(recordBalanceSynth,recordBalance, 0);
-    }
-
-    /**
-     * @dev allows you to check the token pair addresses of the pool
-     * @return _chd address of chd token
-     * @return _token address of baseToken
-     */
-    function getTokens() external view returns(address _chd, address _token){
-      return (address(chd), address(token));
     }
 
     /**
@@ -1191,21 +1223,22 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
       return nullifierHashes[_nullifierHash];
     }
 
-    //internal functions
+    //internal
     /**
      * @dev internal logic of secret transfers and chd mints
      * @param _args proof data for sneding tokens
      * @param _extData external (visible data) to verify proof and pay relayer fee
+     * @param _isDeposit bool if done during oracleDeposit
      */
-    function _transact(Proof memory _args, ExtData memory _extData) internal{
+    function _transact(Proof memory _args, ExtData memory _extData, bool _isDeposit) internal{
       for (uint256 _i = 0; _i < _args.inputNullifiers.length; _i++) {
-        require(!nullifierHashes[_args.inputNullifiers[_i]], "Input is already spent");
+        require(!nullifierHashes[_args.inputNullifiers[_i]], "Input already spent");
         nullifierHashes[_args.inputNullifiers[_i]] = true;
         emit NewNullifier(_args.inputNullifiers[_i]);
       }
       _insert(_args.outputCommitments[0], _args.outputCommitments[1]);
-      emit NewCommitment(_args.outputCommitments[0], nextIndex - 2, _extData.encryptedOutput1);
-      emit NewCommitment(_args.outputCommitments[1], nextIndex - 1, _extData.encryptedOutput2);
+      emit NewCommitment(_args.outputCommitments[0], nextIndex - 2, _extData.encryptedOutput1, _isDeposit);
+      emit NewCommitment(_args.outputCommitments[1], nextIndex - 1, _extData.encryptedOutput2, _isDeposit);
     }
 
     /**
@@ -1263,7 +1296,7 @@ contract Charon is Math, MerkleTreeWithHistory, Token{
             ]
           );
       } else {
-        revert("unsupported input count");
+        revert("bad input count");
       }
   }
 }
