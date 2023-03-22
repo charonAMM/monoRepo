@@ -34,7 +34,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           },
         },
       },
@@ -64,21 +64,21 @@ const config = {
     hardhat: {
       chainId: 1,
       initialBaseFeePerGas: 5,
-      blockGasLimit: 50000000,
+      //allowUnlimitedContractSize: true
     },
     goerli: {
            url: `${process.env.NODE_URL_GOERLI}`,
            accounts: [process.env.PK],
            gas: 9000000,
            chainId:5,
-           gasPrice: 80000000000
+           gasPrice: 12000000000
       } ,
     mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
         accounts: [process.env.PK],
         gas: 9000000,
         chainId: 80001,
-        gasPrice: 175000000000
+        gasPrice: 125000000000
     } ,
     chiado: {
         url: `${process.env.NODE_URL_CHIADO}`,

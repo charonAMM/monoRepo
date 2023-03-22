@@ -84,8 +84,8 @@ describe("full system tests", function() {
             await tellor.deployed();
             mockNative = await deploy("MockNativeBridge")
             mockNative2 = await deploy("MockNativeBridge")
-            tellorBridge = await deploy("TellorBridge", tellor.address)
-            tellorBridge2 = await deploy("TellorBridge", tellor2.address)
+            tellorBridge = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor.address)
+            tellorBridge2 = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor2.address)
             p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
             e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address)
             await e2p.setFxChildTunnel(mockNative.address)
@@ -557,7 +557,7 @@ describe("full system tests", function() {
         let TellorOracle = await ethers.getContractFactory(abi, bytecode);
         let tellor3 = await TellorOracle.deploy();
         await tellor3.deployed();
-        tellorBridge3 = await deploy("TellorBridge", tellor3.address)
+        tellorBridge3 = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor3.address)
         p2e = await deploy("MockPOLtoETHBridge", tellor2.address, mockNative2.address)
         e2p = await deploy("MockETHtoPOLBridge", tellor.address,mockNative.address, mockNative.address)
         await e2p.setFxChildTunnel(mockNative.address)

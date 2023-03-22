@@ -21,17 +21,21 @@ async function finalizePools() {
     await run("compile")
     console.log("initializing and finalizing charon system to: ", _networkName)
 
-    cit =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
-    e2p =  "0xf86a96A941Ae86506F0D9a34a0d40dBBb17B5123"
-    p2e = "0x7022cc1F7eD50DeB4fC89fBe4248E431e3d47694"
+    cit =  "0x826c1A89F9A504631d81E41488B050C8B2Df56E7"
+    e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+    p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
 
     if(_networkName == "mumbai"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://mumbai.polygonscan.com/address/"
+
+
         baseToken =  "0x9edAef26cB70A187926A2962A77c86522564A955"
         charon =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
         chd =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
         cfc =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
+
+
         cChainIDs = [5]
         cAddys = ["0x9EDe7FDe2E135801012D019BAB586C342440dadF"]
 
@@ -45,41 +49,40 @@ async function finalizePools() {
     else if(_networkName == "goerli"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://goerli.etherscan.io/address/"
-        baseToken =  "0x7ff0A9F8ec9Ba82f9340DA55A846a12F220D1e41"
-        charon =  "0x9EDe7FDe2E135801012D019BAB586C342440dadF"
-        chd =  "0x9edAef26cB70A187926A2962A77c86522564A955"
-        cfc =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
-        gnosisAMB =  "0x8dbC94CfcFd867C39F378D4CdaE79EB97EB7C40b"
+
+        baseToken =  "0xf45412AE42B77f5C2547adDad4B69197f61C32F6"
+        charon =  "0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"
+        chd =  "0xf55b9BF28107d65EC2D2b72f31Aae33f6A548EE7"
+        cfc =  "0xD3f676ED12E83a8f627F2B18Ede76F16704904A0"
+        tellorBridge =  "0xBeD7029aF194cddc88eF2062Cf6A857349d7ebf2"
+
         cChainIDs = [80001,10200]
         cAddys = ["0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3","0xA9F3BEe4de793Ebc2a6A34E6d49951Cb80003eFF"]
-
+        _amount = ethAmount
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",e2p)
         await myContract.setCharon(charon);
         console.log("e2p charon address set")
         await myContract.setFxChildTunnel(p2e)
         console.log("e2p fxChildTunnel set")
-        tellorBridge = "0x38810dd60cDD61ab8a50Fd2B98BceB9690114a82"
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge)
         await myContract.setPartnerInfo(cAddys[1],10200);
         console.log("tellorBridge partner info set")
-        _amount = ethAmount
     }
     else if(_networkName == "chiado"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://blockscout.chiadochain.net/address/"
-        baseToken =  "0x5A3A09dBCFA2B901e7742725ef760bB859a4682D"
-        charon =  "0xA9F3BEe4de793Ebc2a6A34E6d49951Cb80003eFF"
-        chd =  "0xDb7469f18f3f47Bc76f6D47cEA27C481dc4cfDFd"
-        cfc =  "0xB3d9FDD711DfbcF037230cb24b9eba185f907b2b"
-        gnosisAMB = "0xB2501D56Dd68c4800e8970C8A47a766053F5dbC7"
+
+        baseToken =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
+        charon =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
+        chd =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
+        cfc =  "0xbC2e8d236EaFd82496A38d729Bd182b71df31C8E"
+        tellorBridge =  "0x52Ed24159ced5Cfa64b115566215b5aBd4103A6F"
+
         cChainIDs = [5]
         cAddys = ["0x9EDe7FDe2E135801012D019BAB586C342440dadF"]
-
-        _amount = gnoAmount
-        tellorBridge = "0x3f4B13FE055Cb0F67b90b90147bEb4DdbeB7Fb3E"
-
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge)
         await myContract.setPartnerInfo(cAddys[0],5);
+        _amount = gnoAmount
         console.log("tellorBridge partner info set")
     }
     else{

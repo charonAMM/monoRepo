@@ -53,7 +53,7 @@ async function deploySystem() {
         //deploy e2p / tellorBridge
         e2p = await deploy("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge", tellor,checkpointManager,fxRoot)
         console.log("ETHtoPOLBridge deployed to: ", e2p.address);
-        tellorBridge = await deploy("TellorBridge", tellor)
+        tellorBridge = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
         console.log("TellorBridge deployed to: ", tellorBridge.address);
         oracles = [e2p.address, tellorBridge.address]
     }
@@ -62,7 +62,7 @@ async function deploySystem() {
         // baseToken = "0xAda4924b1B5803980CF3F45C2dE1c8DcafF9FBd5"
         // charon = "0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"
         // oracle = "0xa643c48A80FFEeF6Eb5868bc786aC81Eb132799d"
-        tellorBridge = await deploy("TellorBridge", tellor)
+        tellorBridge = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
         console.log("TellorBridge deployed to: ", tellorBridge.address);
         oracles = [tellorBridge.address]
     }
@@ -109,6 +109,17 @@ async function deploySystem() {
     console.log("charon = ", '"'+ charon.address + '"')
     console.log("chd = ", '"'+ chd.address + '"')
     console.log("cfc = ", '"'+ cfc.address + '"')
+    if(_networkName == "goerli"){
+        console.log("cit = ", '"'+ cit.address + '"')
+        console.log("e2p = ", '"'+ e2p.address + '"')
+        console.log("tellorBridge = ", '"'+ tellorBridge.address + '"')
+    }
+    else if(_networkName == "mumbai"){
+        console.log("p2e = ", '"'+ p2e.address + '"')
+    }
+    else if(_networkName == "chiado"){
+        console.log("tellorBridge = ", '"'+ tellorBridge.address + '"')
+    }
 
     console.log("verifier2")
     console.log("veriifer16")
@@ -117,7 +128,17 @@ async function deploySystem() {
     console.log("charon")
     console.log("cfc")
     console.log("chd")
-
+    if(_networkName == "goerli"){
+        console.log("cit")
+        console.log("ETHtoPOLBridge")
+        console.log("tellorBridge")
+    }
+    else if(_networkName == "mumbai"){
+        console.log("POLToETHBridge")
+    }
+    else if(_networkName == "chiado"){
+        console.log("tellorBridge")
+    }
     console.log(verifier2.address)
     console.log(verifier16.address)
     console.log(hasher.address)
@@ -125,13 +146,16 @@ async function deploySystem() {
     console.log(charon.address)
     console.log(cfc.address)
     console.log(chd.address)
-
-    console.log("oracles = ", oracles)
-
     if(_networkName == "goerli"){
-        console.log("cit = ", '"'+ cit.address + '"')
-        console.log("cit")
         console.log(cit.address)
+        console.log(e2p.address)
+        console.log(tellorBridge.address)
+    }
+    else if(_networkName == "mumbai"){
+        console.log(p2e.address)
+    }
+    else if(_networkName == "chiado"){
+        console.log(tellorBridge.address)
     }
 
     //now verify
@@ -174,7 +198,7 @@ async function deploySystem() {
                 await run("verify:verify",{
                     address: cit.address,
                     contract: "incentiveToken/contracts/Auction.sol:Auction",
-                    constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 30,cfc.address,"Charon Incentive Token", "CIT"]
+                    constructorArguments: [baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT"]
                 })
                 console.log("cit verified")    
             }
@@ -190,7 +214,7 @@ async function deploySystem() {
         
             await run("verify:verify",{
                 address: tellorBridge.address,
-                contract: "TellorBridge",
+                contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
                 constructorArguments: [tellor]
             })
             console.log("tellorBridge verified")
@@ -198,7 +222,7 @@ async function deploySystem() {
         else if(_networkName == "chiado"){
             await run("verify:verify",{
                 address: tellorBridge.address,
-                contract: "TellorBridge",
+                contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
                 constructorArguments: [tellor]
             })
             console.log("tellorBridge verified")
