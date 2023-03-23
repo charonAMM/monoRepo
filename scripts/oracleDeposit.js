@@ -6,50 +6,58 @@ const hre = require("hardhat");
 require("dotenv").config();
 const web3 = require('web3');
 
-let tellor,base,baseToken,charon,chd,cit,cfc,gnosisAMB;
-var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
-var b = "0x2a4eA8464bd2DaC1Ad4f841Dcc7A8EFB4d84A27d"
+
+let gnoAmount = web3.utils.toWei("10000")
+let ethAmount = web3.utils.toWei("5.54")
+let polAmount = web3.utils.toWei("8695.65")
 
 async function runChecks() {
     let _networkName = hre.network.name
-
-    cit =  "0xa080483eCBc69c63f3348eD224C47F52410fD894"
-    e2p =  "0x7983F3c9c7BbF1cB0Fb5D00D810678774D539100"
-    p2e = "0xE7bDdDF09DDCCB4b16846DFFC899d5422e4e9244"
+    cit =  "0x826c1A89F9A504631d81E41488B050C8B2Df56E7"
+    e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+    p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
+    let _amount,tellor, base, baseToken, charon, chd, cfc, cChainIDs, cAddys;
 
     if(_networkName == "mumbai"){
-        tellor = "0x8f55D884CAD66B79e1a131f6bCB0e66f4fD84d5B"
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://mumbai.polygonscan.com/address/"
-        baseToken =  "0x97034B86C2368938e2620Ee9083Fc34c9c5b555f"
-        charon =  "0x0a760F47a81431472e55422c5b7E222Ef0b3D178"
-        chd =  "0x2be74684052063FB424D623461952fA52443D62A"
-        cfc =  "0x4AC8541598a95A9315b415d1C0A14541cF66BBBD"
-        cChainIDs = [5,10200]
-        cAddys = ["0xE7bDdDF09DDCCB4b16846DFFC899d5422e4e9244","0x5243781910cf05C0C6Bd83a6525E722b0FeEFdbb"]
+
+        baseToken =  "0xDB08ef3B408e2Ba6Cc107dc69dE5EBcb168EFcfc"
+        charon =  "0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84"
+        chd =  "0x5CB6D2cCdAafFa1e82A0Dc12159Dbf8421d5bdeB"
+        cfc =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
+        _amount = polAmount
     }
     else if(_networkName == "goerli"){
-        tellor = "0xB3B662644F8d3138df63D2F43068ea621e2981f9"
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://goerli.etherscan.io/address/"
-        baseToken =  "0x9Ad8F4F37283D680ED9Cc9081A7b3a8bD7a31823"
-        charon =  "0xE7bDdDF09DDCCB4b16846DFFC899d5422e4e9244"
-        chd =  "0x1a11537903308545c4F2964F98314A54c200AA83"
-        cfc =  "0x7e7b08D01C8aA22FEdF0aA5E76ed4F2383B192c2"
-        gnosisAMB =  "0x8dbC94CfcFd867C39F378D4CdaE79EB97EB7C40b"
+
+        baseToken =  "0xf45412AE42B77f5C2547adDad4B69197f61C32F6"
+        charon =  "0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"
+        chd =  "0xf55b9BF28107d65EC2D2b72f31Aae33f6A548EE7"
+        cfc =  "0xD3f676ED12E83a8f627F2B18Ede76F16704904A0"
+        tellorBridge =  "0xBeD7029aF194cddc88eF2062Cf6A857349d7ebf2"
+
         cChainIDs = [80001,10200]
-        cAddys = ["0x0a760F47a81431472e55422c5b7E222Ef0b3D178","0x5243781910cf05C0C6Bd83a6525E722b0FeEFdbb"]
-        gnosisAMB = await hre.ethers.getContractAt("charonAMM/contracts/bridges/GnosisAMB.sol:GnosisAMB",gnosisAMB)
+        cAddys = ["0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84","0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"]
+        _amount = ethAmount
     }
     else if(_networkName == "chiado"){
-        tellor = "0xd71F72C18767083e4e3FE84F9c62b8038C1Ef4f6"
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://blockscout.chiadochain.net/address/"
-        baseToken =  "0xCcC741ba014d1D3077473B491EB8C909ebAcBa9D"
-        charon =  "0x5243781910cf05C0C6Bd83a6525E722b0FeEFdbb"
-        chd =  "0x07f30eF4E57749cA2b52c04A1EBefab33a3AfeAb"
-        cfc =  "0x9Ad8F4F37283D680ED9Cc9081A7b3a8bD7a31823"
-        gnosisAMB = "0xB2501D56Dd68c4800e8970C8A47a766053F5dbC7"
-        cChainIDs = [5,80001]
-        cAddys = ["0xE7bDdDF09DDCCB4b16846DFFC899d5422e4e9244","0x0a760F47a81431472e55422c5b7E222Ef0b3D178"]
-        gnosisAMB = await hre.ethers.getContractAt("charonAMM/contracts/bridges/GnosisAMB.sol:GnosisAMB",gnosisAMB)
+
+        baseToken =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
+        charon =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
+        chd =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
+        cfc =  "0xbC2e8d236EaFd82496A38d729Bd182b71df31C8E"
+        tellorBridge =  "0x52Ed24159ced5Cfa64b115566215b5aBd4103A6F"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
+        _amount = gnoAmount
     }
     else{
         console.log("No network name ", _networkName, " found")
@@ -72,29 +80,8 @@ if(_networkName == "mumbai"){
     console.log("oracle deposit synced on mumbai!")
 }
 else if(_networkName == "chiado"){
-    //to do, loop through all stateId's and check if they've been submitted, start at oldest
-    let msgIds = await gnosisAMB.getMessageIds()
-    console.log(msgIds);
-    let toDo;
-    for(i=msgIds.length;i>0 ;i--){
-        toDo = await gnosisAMB.didPush(msgIds[i-1])
-        if(i == false){
-            await charon.oracleDeposit([0],msgIds[i-1])
-            console.log("oracleDeposit!, i: ", i -1, " / msgID: ",msgIds[i-1])
-            break
-        }
-    }
-    console.log("here")
-    if(i == 0){
-        let depositID = 1;
-        let ABI = ["function getOracleSubmission(uint256 _depositId)"];
-        let iface = new ethers.utils.Interface(ABI);
-        let funcSelector = iface.encodeFunctionData("getOracleSubmission", [depositID])
-        let _id = await ethers.utils.AbiCoder.prototype.encode(['address','bytes'],["0xE7bDdDF09DDCCB4b16846DFFC899d5422e4e9244",funcSelector]);
-        console.log(_id)
-        // await gnosisAMB.getInfo(_id)
-        console.log("info retrieved, deposit ID ", depositID)
-    }
+
+
 }
 else if(_networkName == "goerli"){
     //to do, loop through all stateId's and check if they've been submitted, start at oldest

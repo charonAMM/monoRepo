@@ -12,7 +12,7 @@ const { utils } = ethers
 const Utxo = require('../src/utxo')
 const { buildPoseidon } = require("circomlibjs");
 const { prepareTransaction } = require('../src/index')
-
+//npx hardhat run scripts/manualChecks.js --network mumbai
 let tellor,base,baseToken,charon,chd,cit,cfc,builtPoseidon;
 var fee = web3.utils.toWei(".006");//.6
 var HEIGHT = 23;
@@ -30,30 +30,31 @@ return poseidon([a,b])
 
 let chdMint = web3.utils.toWei("10000")
 let gnoAmount = web3.utils.toWei("10000")
-let ethAmount = web3.utils.toWei("6.02")
-let polAmount = web3.utils.toWei("8771.93")
+let ethAmount = web3.utils.toWei("5.54")
+let polAmount = web3.utils.toWei("8695.65")
 
 async function runChecks() {
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId
-
-    cit =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
-    e2p =  "0xf86a96A941Ae86506F0D9a34a0d40dBBb17B5123"
-    p2e = "0x7022cc1F7eD50DeB4fC89fBe4248E431e3d47694"
+    cit =  "0x826c1A89F9A504631d81E41488B050C8B2Df56E7"
+    e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+    p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
+    let _amount,myContract, tellor, base, baseToken, charon, chd, cfc, cChainIDs, cAddys;
 
     if(_networkName == "mumbai"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://mumbai.polygonscan.com/address/"
-        baseToken =  "0x9edAef26cB70A187926A2962A77c86522564A955"
-        charon =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
-        chd =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
-        cfc =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
-        cChainIDs = [5]
-        cAddys = ["0x9EDe7FDe2E135801012D019BAB586C342440dadF"]
-        _amount = polAmount;
 
+        baseToken =  "0xDB08ef3B408e2Ba6Cc107dc69dE5EBcb168EFcfc"
+        charon =  "0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84"
+        chd =  "0x5CB6D2cCdAafFa1e82A0Dc12159Dbf8421d5bdeB"
+        cfc =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
+
+        _amount = polAmount;
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", p2e)
-        await myContract.setCharon(charon);
         if(await myContract.charon() != charon){console.log("charon should be set correctly")}
         if(await myContract.fxRootTunnel() != e2p){console.log("fxRootTunnel should be set correctly")}
     }
@@ -61,13 +62,15 @@ async function runChecks() {
     else if(_networkName == "goerli"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://goerli.etherscan.io/address/"
-        baseToken =  "0x7ff0A9F8ec9Ba82f9340DA55A846a12F220D1e41"
-        charon =  "0x9EDe7FDe2E135801012D019BAB586C342440dadF"
-        chd =  "0x9edAef26cB70A187926A2962A77c86522564A955"
-        cfc =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
-        gnosisAMB =  "0x8dbC94CfcFd867C39F378D4CdaE79EB97EB7C40b"
+
+        baseToken =  "0xf45412AE42B77f5C2547adDad4B69197f61C32F6"
+        charon =  "0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"
+        chd =  "0xf55b9BF28107d65EC2D2b72f31Aae33f6A548EE7"
+        cfc =  "0xD3f676ED12E83a8f627F2B18Ede76F16704904A0"
+        tellorBridge =  "0xBeD7029aF194cddc88eF2062Cf6A857349d7ebf2"
+
         cChainIDs = [80001,10200]
-        cAddys = ["0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3","0xA9F3BEe4de793Ebc2a6A34E6d49951Cb80003eFF"]
+        cAddys = ["0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84","0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"]
         _amount = ethAmount
 
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",e2p)
@@ -78,22 +81,21 @@ async function runChecks() {
         tellorBridge = "0x38810dd60cDD61ab8a50Fd2B98BceB9690114a82"
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge)
         if(await myContract.connectedChainId() != 10200){console.log("connectedChainId should be set correctly")}
-
-
     }
     else if(_networkName == "chiado"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://blockscout.chiadochain.net/address/"
-        baseToken =  "0x5A3A09dBCFA2B901e7742725ef760bB859a4682D"
-        charon =  "0xA9F3BEe4de793Ebc2a6A34E6d49951Cb80003eFF"
-        chd =  "0xDb7469f18f3f47Bc76f6D47cEA27C481dc4cfDFd"
-        cfc =  "0xB3d9FDD711DfbcF037230cb24b9eba185f907b2b"
-        gnosisAMB = "0xB2501D56Dd68c4800e8970C8A47a766053F5dbC7"
-        cChainIDs = [5]
-        cAddys = ["0x9EDe7FDe2E135801012D019BAB586C342440dadF"]
 
+        baseToken =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
+        charon =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
+        chd =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
+        cfc =  "0xbC2e8d236EaFd82496A38d729Bd182b71df31C8E"
+        tellorBridge =  "0x52Ed24159ced5Cfa64b115566215b5aBd4103A6F"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
         _amount = gnoAmount
-        tellorBridge = "0x3f4B13FE055Cb0F67b90b90147bEb4DdbeB7Fb3E"
+
         myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge)
         if(await myContract.connectedChainId() != 5){console.log("connectedChainId should be set correctly")}
     }
@@ -120,14 +122,13 @@ if(await charon.controller() != cfc.address){console.log("controller should be s
 if(await charon.chainID() != chainID){console.log("chainID should be correct")}
 //finalize
 if(await charon.balanceOf(myAddress) - web3.utils.toWei("100") != 0){console.log( "should have full balance")}
-if(await charon.recordBalance() != web3.utils.toWei("100")){console.log("record Balance should be set")}
-if(await charon.recordBalanceSynth() != web3.utils.toWei("1000")){console.log("record Balance synth should be set")}
+if(await charon.recordBalance() != _amount){console.log("record Balance should be set")}
+if(await charon.recordBalanceSynth() != chdMint){console.log("record Balance synth should be set")}
 if(await charon.chd() != chd.address){console.log("chd should be set")}
 let pC = await charon.getPartnerContracts();
 if(pC[0][0] != cChainIDs[0]){console.log( "partner chain should be correct")}
-if(pC[1][0]!= cChainIDs[1]){console.log( "partner chain should be correct")}
 if(pC[0][1] !=  cAddys[0]){console.log("partner address should be correct")}
-if(pC[1][1] !=  cAddys[1]){console.log("partner address should be correct2")}
+
 //cfc 
 if(await cfc.cit() != cit.address){console.log( "cit should be set")}
 if(await cfc.charon() != charon.address){console.log("charon should be set")}
@@ -142,13 +143,13 @@ if(thisPeriod.endDate - feePeriod != 0){console.log("end date should be set")}
 if(await cfc.token() != baseToken.address){console.log( "base token should be set")}
 if(await cfc.chd() !=chd.address){console.log("chd should be set")}
 //cit
-if(_networkName == "_goerli"){
+if(_networkName == "goerli"){
     if(await cit.bidToken() != baseToken.address){console.log("token should be set")}
     if(await cit.mintAmount() != web3.utils.toWei("10000")){console.log("mint amount should be set")}
-    if(await cit.auctionFrequency() != 86400*30){console.log("auction frequency should be set")}
+    if(await cit.auctionFrequency() != 86400*7){console.log("auction frequency should be set")}
     if(await cit.charonFeeContract() != cfc.address){console.log("cfc should be set")}
     if(await cit.endDate() ==0){console.log("first end date should be set")}
-    if(await cit.balanceOf(myAddress) != web3.utils.toWei("100000")){console.log("init supply should be minted")}
+    if(await cit.balanceOf(myAddress) != web3.utils.toWei("10000")){console.log("init supply should be minted")}
     if(await cit.name() != "Charon Incentive Token"){console.log("name should be set")}
     if(await cit.symbol() != "CIT"){console.log( "symbol should be set")}
 }
