@@ -8,6 +8,9 @@ const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
 const web3 = require('web3');
 const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
+const fetch = require('node-fetch')
+
+
 //npx hardhat run scripts/tellorPush.js --network chiado
 tellorAddress = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
 goerliAddress =  '0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090'
@@ -82,11 +85,11 @@ async function tellorPush() {
     }
     else if(_networkName == "goerli"){
         let chiNode = process.env.NODE_URL_CHIADO;
-        const provider = new ethers.providers.JsonRpcProvider(chiNode);
-        const wallet = new ethers.Wallet(process.env.PK, provider);
-        const signer = wallet.provider.getSigner(wallet.address)
+        let provider = new ethers.providers.JsonRpcProvider(chiNode);
+        let wallet = new ethers.Wallet(process.env.PK, provider);
+        let signer = wallet.provider.getSigner(wallet.address)
         
-        //goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
+        goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
         chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress, signer)
         toSubmit = []
         inputIds = []
@@ -126,6 +129,42 @@ async function tellorPush() {
                 console.log("submitting value for id :", toSubmit[i])
             }
         }
+        //now for mumbai
+        toSubmit = []
+        inputIds = []
+        let mumNode = process.env.NODE_URL_MUMBAI;
+        provider = new ethers.providers.JsonRpcProvider(mumNode);
+        wallet = new ethers.Wallet(process.env.PK, provider);
+        signer = wallet.provider.getSigner(wallet.address)
+        mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress, signer)
+        let filter = mumbaiCharon.filters.DepositToOtherChain()
+        let events = await mumbaiCharon.queryFilter(filter, startTime , "latest")
+        filter = goerliCharon.filters.OracleDeposit()
+        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
+        for(i = 0; i< oracleEvents.length; i++){
+            thisId = oracleEvents[i]._inputData;
+            inputIds.push(thisId);
+        }
+        console.log("inputIds ", inputIds)
+        for(i = 0; i< events.length; i++){
+            toSubmit.push(events[i].transactionHash)
+            console.log("need push for Id's: ", toSubmit)
+        }
+        let payload, _r, content
+        for(i = 0; i < toSubmit.length; i++){
+            //get txn from api
+            _r = await fetch('https://apis.matic.network/api/v1/mumbai/exit-payload/' + toSubmit[i] +'?eventSignature=0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036').then(response => response.json());
+            content = await _r.result
+            if(inputIds.indexOf(toSubmit[i]) == -1){
+                await goerliCharon.oracleDeposit([0], content)
+                console.log("oracle deposit synced on mumbai!", toSubmit[i])
+            }
+            else{
+                console.log("already submitted for ", i)
+            }
+        }
+
+        console.log("oracle deposit done on goerli from matic")
     }
     else if(_networkName == "mumbai"){
         //to do, loop through all stateId's and check if they've been submitted, start at oldest
