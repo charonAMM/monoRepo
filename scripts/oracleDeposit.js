@@ -3,27 +3,61 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 const hre = require("hardhat");
-const abiCoder = new ethers.utils.AbiCoder()
-const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
 const web3 = require('web3');
-const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
-//npx hardhat run scripts/tellorPush.js --network chiado
-tellorAddress = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
-goerliAddress =  '0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090'
-chiadoAddress = "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
 
-startTime = 0;
 
-async function tellorPush() {
+let gnoAmount = web3.utils.toWei("10000")
+let ethAmount = web3.utils.toWei("5.54")
+let polAmount = web3.utils.toWei("8695.65")
+
+async function runChecks() {
     let _networkName = hre.network.name
-    let tellor
+    cit =  "0x826c1A89F9A504631d81E41488B050C8B2Df56E7"
+    e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+    p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
+    let _amount,tellor, base, baseToken, charon, chd, cfc, cChainIDs, cAddys;
 
-    if(_networkName == "goerli"){
+    if(_networkName == "mumbai"){
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+        base = "https://mumbai.polygonscan.com/address/"
+
+        baseToken =  "0xDB08ef3B408e2Ba6Cc107dc69dE5EBcb168EFcfc"
+        charon =  "0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84"
+        chd =  "0x5CB6D2cCdAafFa1e82A0Dc12159Dbf8421d5bdeB"
+        cfc =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
+        _amount = polAmount
+    }
+    else if(_networkName == "goerli"){
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://goerli.etherscan.io/address/"
+
+        baseToken =  "0xf45412AE42B77f5C2547adDad4B69197f61C32F6"
+        charon =  "0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"
+        chd =  "0xf55b9BF28107d65EC2D2b72f31Aae33f6A548EE7"
+        cfc =  "0xD3f676ED12E83a8f627F2B18Ede76F16704904A0"
+        tellorBridge =  "0xBeD7029aF194cddc88eF2062Cf6A857349d7ebf2"
+
+        cChainIDs = [80001,10200]
+        cAddys = ["0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84","0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"]
+        _amount = ethAmount
     }
     else if(_networkName == "chiado"){
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://blockscout.chiadochain.net/address/"
+
+        baseToken =  "0x21d20B4c7dCb5521225F5036E0b27c4dF3F42aa3"
+        charon =  "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
+        chd =  "0xdB7d72AE7f59e25f16472e5ED210Ef4809F68a2c"
+        cfc =  "0xbC2e8d236EaFd82496A38d729Bd182b71df31C8E"
+        tellorBridge =  "0x52Ed24159ced5Cfa64b115566215b5aBd4103A6F"
+
+        cChainIDs = [5]
+        cAddys = ["0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090"]
+        _amount = gnoAmount
     }
     else{
         console.log("No network name ", _networkName, " found")
@@ -34,126 +68,38 @@ async function tellorPush() {
     console.log("running oracle deposit on :  ", _networkName)
 
     //charonAMM
-    tellor = await hre.ethers.getContractAt(abi, tellorAddress,hre.provider);
-    goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress)
-    chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress)
+    charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", charon)
+    p2e = await hre.ethers.getContractAt("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", p2e)
+    e2p = await hre.ethers.getContractAt("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",e2p)
 
-    if(_networkName == "chiado"){
-        let gnoNode = process.env.NODE_URL_GOERLI;
-        const provider = new ethers.providers.JsonRpcProvider(gnoNode);
-        const wallet = new ethers.Wallet(process.env.PK, provider);
-        const signer = wallet.provider.getSigner(wallet.address)
-        
-        //goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
-        goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress, signer)
-        toSubmit = []
-        inputIds = []
-        let filter = goerliCharon.filters.DepositToOtherChain()
-        let events = await goerliCharon.queryFilter(filter, startTime , "latest")
-        filter = chiadoCharon.filters.OracleDeposit()
-        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
-        for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
-            inputIds.push(thisId);
-        }
-        for(i = 0; i< events.length; i++){
-            if(inputIds.indexOf(events[i].args._depositId) == -1){
-                    toSubmit.push(events[i].args._depositId)
-            }
-            console.log("submitting for Id's: ", toSubmit)
-        }
-        let _query,_value, _tx, _ts
-        for(i=0;i<toSubmit.length;i++){
-            _query = await getTellorData(tellor,goerliAddress,5,toSubmit[i]);
-            _value = await goerliCharon.getOracleSubmission(toSubmit[i]);
-            if(_query.nonce > 0){
-                //check if 12 hours old
-                _ts = await tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
-                //if yes do oracle deposit
-                if(Date.now()/1000 - _ts > 86400/2){
-                    _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                    await chiadoCharon.oracleDeposit([0],_encoded);
-                    console.log("oracleDeposit for id :", toSubmit[i])
-                }
-                else{
-                    console.log("need more time for Id: ",toSubmit[i])
-                }
-            }
-            else{
-                _tx = await tellor.submitValue(_query.queryId, _value,_query.nonce, _query.queryData);
-                console.log("submitting for id :", toSubmit[i])
-            }
-        }
+if(_networkName == "mumbai"){
+    //to do, loop through all stateId's and check if they've been submitted, start at oldest
+    let stateId = await p2e.latestStateId()
+    let _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+    await charon.oracleDeposit([0],_id)
+    console.log("oracle deposit synced on mumbai!")
+}
+else if(_networkName == "chiado"){
 
-    }
-    else if(_networkName == "goerli"){
-        let chiNode = process.env.NODE_URL_CHIADO;
-        const provider = new ethers.providers.JsonRpcProvider(chiNode);
-        const wallet = new ethers.Wallet(process.env.PK, provider);
-        const signer = wallet.provider.getSigner(wallet.address)
-        
-        //goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
-        chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress, signer)
-        toSubmit = []
-        inputIds = []
-        let filter = chiadoCharon.filters.DepositToOtherChain()
-        let events = await chiadoCharon.queryFilter(filter, startTime , "latest")
-        filter = goerliCharon.filters.OracleDeposit()
-        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
-        for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
-            inputIds.push(thisId);
-        }
-        for(i = 0; i< events.length; i++){
-            if(inputIds.indexOf(events[i].args._depositId) == -1){
-                    toSubmit.push(events[i].args._depositId)
-            }
-            console.log("need push for Id's: ", toSubmit)
-        }
-        let _query,_value, _tx, _ts
-        for(i=0;i<toSubmit.length;i++){
-            _query = await getTellorData(tellor,chiadoAddress,10200,toSubmit[i]);
-            _value = await chiadoCharon.getOracleSubmission(toSubmit[i]);
-            if(_query.nonce > 0){
-                //check if 12 hours old
-                _ts = await tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
-                //if yes do oracle deposit
-                if(Date.now()/1000 - _ts > 86400/2){
-                    _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                    await goerliCharon.oracleDeposit([0],_encoded);
-                    console.log("oracleDeposit for id :", toSubmit[i])
-                }
-                else{
-                    console.log("need more time for Id: ",toSubmit[i])
-                }
-            }
-            else{
-                _tx = await tellor.submitValue(_query.queryId, _value,_query.nonce, _query.queryData);
-                console.log("submitting value for id :", toSubmit[i])
-            }
-        }
-    }
+
+}
+else if(_networkName == "goerli"){
+    //to do, loop through all stateId's and check if they've been submitted, start at oldest
+    //get input from API
+   // https://apis.matic.network/api/v1/mumbai/exit-payload/0x288f27e932ebc221001113099026ae5d62b1e20511d74e39ae808714ed5830d4?eventSignature=0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036
+
+    let _input = "0xf9172b8431e3e960b90120c826faa2e8c83e2e852e0a9cc262c91a5e980fafa265d05e470e1cda8b6cdbfc9e7c5a74b4c853c2764789bd0206555bd598d84c72833024f71556867890cfd11c13ef1f66e532a07c55f9324f667660b508cee55b057c1b7928ea477d6aa51c3f147e43b61e5c63a43dc6a6c470125133c9c0145d0be14afe93e796a6594161b6ce8c625388ffcfce3bd9d1c1a185caf4bf6bf5365e85b011419e0c44757b8a631c91810e37d0d519ad81d221cebed000f286751b9f7361d39f5ab3d76607ad0271a094d060f2fed393db8f009120f046f938c38bc1909f96853c9eab1039c9bf1c2fb66d0cf4eff5943da1de8eff4deaccdfbcb36e5e5107cf79f6e2c8477e61cbe5915d3bf335cd36325a20dd4781dbf071ff213fe7bc280bdd61128ee6a98401e976e58463ed11f5a0ac5bdd2f89f0345cd9609f4762a671fb3527823663a4974dad1aeb687f0f34fea049094a69d4c3775a85ac7c1b13361f929c7eefb9832c735cb291d6885c6d237ab909eef909eb0183185459b9010000000000000000020000000000000080000000000000008000000000000000000000000000400200000800000000000000008000002010000000000000200000000000000000000000000008000000800000000400000000000100000000000000000000000000000000000000000000000000000040000082000210020000000000000000000000000000000000000000000200001000000000008000000000220000000000000020400000000000000001000000000200000000000000004000000002000000000401000000000000000000000000020000100000000000000010000040100010000000000000000000000020000000000000000400108000f908e0f89b9497034b86c2368938e2620ee9083fc34c9c5b555ff863a0ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3efa0000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbeda00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a00000000000000000000000000000000000000000000000000e04998456557eb4f89b9497034b86c2368938e2620ee9083fc34c9c5b555ff863a08c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925a00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a000000000000000000000000000000000000000000000000000493c9a3601beabf9023a94e7bdddf09ddccb4b16846dffc899d5422e4e9244e1a08c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036b90200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001c0123e8edee3756438cb93f407e234cc30bc390c42ea5c5a194ffe741d5ded3c372ff5a24d8e635f1c956078923f47bc12d021e3ca3fee7f7d50b38485246ec2a30c81a8a47344b6384e3f98e082e8306d67f2f1b3ccf16471b6171173c897e61128128c9a371925f4fd9de756d6cccfc657f9c47ac14d32514b55b4fd0f5f062a00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000010029931f5fb9dd56f49d844264840c00f67ef3add43b23678b1877dc995d65e2452888c2b974b48e5fc5d94b9365ca92a231d72238e32676a046b49a3090e64bbf2fa5a49ab8513ccbd1024cc3bcce4e5dc378ee2267c4bf3ff53f5eb311c8c94a1f33ad93a3bd3920b7703a48ae8609ffdbba35f9c921e00afd591df6e895279a117476030f8f262430b5f3c9061588b41b4eece4a798a40d3e2f62843a74bf052f1a6f9ef3173e0cd0799cc53015bac25a3fd72aa600127d38309bf46a17c27318f7525b607a61cd113461737ee62a9274e5dbf2daacb6713b0939fc91a0fe760ce719e4b47467947ec382c8500cc9ede4bfd4de92f7d8460c99a040fdfc4471f858940a760f47a81431472e55422c5b7e222ef0b3d178e1a05e58f77bbf94b46d8d896e29753e4458c6e59b48581e20ed58c9558e96f297cea0123e8edee3756438cb93f407e234cc30bc390c42ea5c5a194ffe741d5ded3c37f858940a760f47a81431472e55422c5b7e222ef0b3d178e1a05e58f77bbf94b46d8d896e29753e4458c6e59b48581e20ed58c9558e96f297cea02ff5a24d8e635f1c956078923f47bc12d021e3ca3fee7f7d50b38485246ec2a3f9015a940a760f47a81431472e55422c5b7e222ef0b3d178e1a0f3843eddcfcac65d12d9f26261dab50671fdbf5dc44441816c8bbdace2411afdb901200c81a8a47344b6384e3f98e082e8306d67f2f1b3ccf16471b6171173c897e61100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000009ca18da985eb79d37dc9f55551b284a14328ca1d3edf9a55ae373df7cc1b1c45d4f1eb1bf40bafc43fd8f2e3a9b61a02f3323682e0f780774e9782a8af9caa5e1b90e89fa0a6c8faee01327e31ad7826c2d10d7462095c77ca7406aa851ad704a286000430aed99da2c8ae5cc4ca16edc8afa7f52f42c9a1f678c5696e455521e37b5ccbfe923250ce72f8b1f5e90908224ac77ad9547722c6c5baf9ff00000000f9015a940a760f47a81431472e55422c5b7e222ef0b3d178e1a0f3843eddcfcac65d12d9f26261dab50671fdbf5dc44441816c8bbdace2411afdb9012028128c9a371925f4fd9de756d6cccfc657f9c47ac14d32514b55b4fd0f5f062a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000009c3af21a597429157f84f85ae3c1629f6a50edc7cce4ce8ba22e092714decd55958efb989d13c2c51e9add6e777d9b852a37639299211bdb6beea642bd942b3bc1ca4565f54770a9e319cbea93ee5389abe4350ea72298512496c0ba047cd9ea6212d7cec30b7d20e9aaca211c5eacf3cc554db410d3939ef2fcabd7e2958befe9b37cf8c23893c24afe2292fb0306e06acbb6a6c177ddd2310b75db8f00000000f8b9940a760f47a81431472e55422c5b7e222ef0b3d178e1a0384879cd7979086cdd9cf08737e79dd9fc40fbd32ec9982443d220f73293b272b8800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbed0000000000000000000000000000000000000000000000000000000063ed11f50000000000000000000000000000000000000000000000000e04998456557eb4f9013d940000000000000000000000000000000000001010f884a04dfe1bbbcf077ddc3e01291eea2d5c70c2b422b415d95645b9adcfd678cb1d63a00000000000000000000000000000000000000000000000000000000000001010a0000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbeda0000000000000000000000000c26880a0af2ea0c7e8130e6ec47af756465452e8b8a0000000000000000000000000000000000000000000000000009d5a7758e06b40000000000000000000000000000000000000000000000000126eeeb5dde2e200000000000000000000000000000000000000000000001b0aa74a83b80bd6a8f500000000000000000000000000000000000000000000000011d1943e850276c0000000000000000000000000000000000000000000001b0aa7e7de2f64b71435b90bbff90bbcf851a0ec6f20c7e41b5402eb55d84df67bc9d983f48389166249e1fe47ab0b329a684280808080808080a06133a314f0a17fc0dc2ec25727506312ab1ed975ded08b2ca290b4484ce1bfc28080808080808080f9017180a05a2834b9829dc17308113181d77420d388514597b5dcf6ce249858052f91a411a0514491ed5fa241e094054d73756cb5a7cba02f372222b6268528035e924f726ca0482c5ad67212d97822b2dd8ca0685c3f5d57f464e12dc3ed2f35f3fd4ca8630fa0a04eb1cbfd403e31ab1cd70a8811dcd0538260094224693ee5b656138d9ae78da06dbfa6eb848c0d27ed8428f00ea89bf6b5358a38e1a8504d29365f2cc7f64ca7a0e9cd65017c9418d90be851e54d2e1dc588d7b41dfbd0f187fd21e53f2e233b42a05981230c2d47eae8ab8b010961d75de9f1afc9afb5b856af68eb1cbed449d95aa0097d6baa5690e7e2d8b2419b1c755e2c95af773ddb5272f1f647b30e56805911a08b0066485318ea6902f6253abcc0abb39d192d4d2f262c697f5197e72d50bc4ca0e53c9d8d5b635405bb3d87ff89000b3721b2a58cbd76eebef183281a836b9383a0a786e5c5e57f477a706c5dfbfd471b76cb9416cb5645d6f6152301bbf07b30b78080808080f909f220b909eef909eb0183185459b9010000000000000000020000000000000080000000000000008000000000000000000000000000400200000800000000000000008000002010000000000000200000000000000000000000000008000000800000000400000000000100000000000000000000000000000000000000000000000000000040000082000210020000000000000000000000000000000000000000000200001000000000008000000000220000000000000020400000000000000001000000000200000000000000004000000002000000000401000000000000000000000000020000100000000000000010000040100010000000000000000000000020000000000000000400108000f908e0f89b9497034b86c2368938e2620ee9083fc34c9c5b555ff863a0ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3efa0000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbeda00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a00000000000000000000000000000000000000000000000000e04998456557eb4f89b9497034b86c2368938e2620ee9083fc34c9c5b555ff863a08c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925a00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a00000000000000000000000000a760f47a81431472e55422c5b7e222ef0b3d178a000000000000000000000000000000000000000000000000000493c9a3601beabf9023a94e7bdddf09ddccb4b16846dffc899d5422e4e9244e1a08c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036b90200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001c0123e8edee3756438cb93f407e234cc30bc390c42ea5c5a194ffe741d5ded3c372ff5a24d8e635f1c956078923f47bc12d021e3ca3fee7f7d50b38485246ec2a30c81a8a47344b6384e3f98e082e8306d67f2f1b3ccf16471b6171173c897e61128128c9a371925f4fd9de756d6cccfc657f9c47ac14d32514b55b4fd0f5f062a00000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000010029931f5fb9dd56f49d844264840c00f67ef3add43b23678b1877dc995d65e2452888c2b974b48e5fc5d94b9365ca92a231d72238e32676a046b49a3090e64bbf2fa5a49ab8513ccbd1024cc3bcce4e5dc378ee2267c4bf3ff53f5eb311c8c94a1f33ad93a3bd3920b7703a48ae8609ffdbba35f9c921e00afd591df6e895279a117476030f8f262430b5f3c9061588b41b4eece4a798a40d3e2f62843a74bf052f1a6f9ef3173e0cd0799cc53015bac25a3fd72aa600127d38309bf46a17c27318f7525b607a61cd113461737ee62a9274e5dbf2daacb6713b0939fc91a0fe760ce719e4b47467947ec382c8500cc9ede4bfd4de92f7d8460c99a040fdfc4471f858940a760f47a81431472e55422c5b7e222ef0b3d178e1a05e58f77bbf94b46d8d896e29753e4458c6e59b48581e20ed58c9558e96f297cea0123e8edee3756438cb93f407e234cc30bc390c42ea5c5a194ffe741d5ded3c37f858940a760f47a81431472e55422c5b7e222ef0b3d178e1a05e58f77bbf94b46d8d896e29753e4458c6e59b48581e20ed58c9558e96f297cea02ff5a24d8e635f1c956078923f47bc12d021e3ca3fee7f7d50b38485246ec2a3f9015a940a760f47a81431472e55422c5b7e222ef0b3d178e1a0f3843eddcfcac65d12d9f26261dab50671fdbf5dc44441816c8bbdace2411afdb901200c81a8a47344b6384e3f98e082e8306d67f2f1b3ccf16471b6171173c897e61100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000009ca18da985eb79d37dc9f55551b284a14328ca1d3edf9a55ae373df7cc1b1c45d4f1eb1bf40bafc43fd8f2e3a9b61a02f3323682e0f780774e9782a8af9caa5e1b90e89fa0a6c8faee01327e31ad7826c2d10d7462095c77ca7406aa851ad704a286000430aed99da2c8ae5cc4ca16edc8afa7f52f42c9a1f678c5696e455521e37b5ccbfe923250ce72f8b1f5e90908224ac77ad9547722c6c5baf9ff00000000f9015a940a760f47a81431472e55422c5b7e222ef0b3d178e1a0f3843eddcfcac65d12d9f26261dab50671fdbf5dc44441816c8bbdace2411afdb9012028128c9a371925f4fd9de756d6cccfc657f9c47ac14d32514b55b4fd0f5f062a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000009c3af21a597429157f84f85ae3c1629f6a50edc7cce4ce8ba22e092714decd55958efb989d13c2c51e9add6e777d9b852a37639299211bdb6beea642bd942b3bc1ca4565f54770a9e319cbea93ee5389abe4350ea72298512496c0ba047cd9ea6212d7cec30b7d20e9aaca211c5eacf3cc554db410d3939ef2fcabd7e2958befe9b37cf8c23893c24afe2292fb0306e06acbb6a6c177ddd2310b75db8f00000000f8b9940a760f47a81431472e55422c5b7e222ef0b3d178e1a0384879cd7979086cdd9cf08737e79dd9fc40fbd32ec9982443d220f73293b272b8800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbed0000000000000000000000000000000000000000000000000000000063ed11f50000000000000000000000000000000000000000000000000e04998456557eb4f9013d940000000000000000000000000000000000001010f884a04dfe1bbbcf077ddc3e01291eea2d5c70c2b422b415d95645b9adcfd678cb1d63a00000000000000000000000000000000000000000000000000000000000001010a0000000000000000000000000d109a7bd41f2bece58885f1b04b607b5034ffbeda0000000000000000000000000c26880a0af2ea0c7e8130e6ec47af756465452e8b8a0000000000000000000000000000000000000000000000000009d5a7758e06b40000000000000000000000000000000000000000000000000126eeeb5dde2e200000000000000000000000000000000000000000000001b0aa74a83b80bd6a8f500000000000000000000000000000000000000000000000011d1943e850276c0000000000000000000000000000000000000000000001b0aa7e7de2f64b7143582000502"
+    // await e2p.receiveMessage(_input)
+    let stateId = await e2p.id();
+    console.log("state ID", stateId)
+    let _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[stateId]);
+    await charon.oracleDeposit([0],_id);
+    console.log("oracle deposit done on goerli from matic")
+}
 
 }
 
-async function getTellorData(tInstance,cAddress,chain,depositID){
-    let ABI = ["function getOracleSubmission(uint256 _depositId)"];
-    let iface = new ethers.utils.Interface(ABI);
-    let funcSelector = iface.encodeFunctionData("getOracleSubmission", [depositID])
-
-    queryData = abiCoder.encode(
-        ['string', 'bytes'],
-        ['EVMCall', abiCoder.encode(
-            ['uint256','address','bytes'],
-            [chain,cAddress,funcSelector]
-        )]
-        );
-        queryId = h.hash(queryData)
-        nonce = await tInstance.getNewValueCountbyQueryId(queryId)
-        return({queryData: queryData,queryId: queryId,nonce: nonce})
-  }
-
-tellorPush()
+runChecks()
     .then(() => process.exit(0))
     .catch(error => {
         console.error(error);

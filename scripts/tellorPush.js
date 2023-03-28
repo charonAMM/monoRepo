@@ -28,21 +28,27 @@ async function tellorPush() {
     console.log("running oracle deposit on :  ", _networkName)
 
     //charonAMM
+    let gnoNode = process.env.NODE_URL_GOERLI;
+    let polNode = process.env.NODE_URL_MUMBAI;
+    let chiNode = process.env.NODE_URL_CHIADO;
+    let provider = new ethers.providers.JsonRpcProvider(gnoNode);
+    let wallet = new ethers.Wallet(process.env.PK, provider);
+    let signer = wallet.provider.getSigner(wallet.address)
+    goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress, signer)
     tellor = await hre.ethers.getContractAt(abi, tellorAddress,hre.provider);
-    goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress)
-    chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress)
-    mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress)
+    provider = new ethers.providers.JsonRpcProvider(chiNode);
+    wallet = new ethers.Wallet(process.env.PK, provider);
+    signer = wallet.provider.getSigner(wallet.address)
+    chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress,signer)
+    provider = new ethers.providers.JsonRpcProvider(polNode);
+    wallet = new ethers.Wallet(process.env.PK, provider);
+    signer = wallet.provider.getSigner(wallet.address)
+    mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress,signer)
     p2e = await hre.ethers.getContractAt("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", p2e)
     e2p = await hre.ethers.getContractAt("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",e2p)
 
     if(_networkName == "chiado"){
-        let gnoNode = process.env.NODE_URL_GOERLI;
-        const provider = new ethers.providers.JsonRpcProvider(gnoNode);
-        const wallet = new ethers.Wallet(process.env.PK, provider);
-        const signer = wallet.provider.getSigner(wallet.address)
-        
-        //goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
-        goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress, signer)
+        chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress)
         toSubmit = []
         inputIds = []
         let filter = goerliCharon.filters.DepositToOtherChain()
@@ -77,20 +83,14 @@ async function tellorPush() {
                 }
             }
             else{
-                _tx = await tellor.submitValue(_query.queryId, _value,_query.nonce, _query.queryData);
+                _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
                 console.log("submitting for id :", toSubmit[i])
             }
         }
 
     }
     else if(_networkName == "goerli"){
-        let chiNode = process.env.NODE_URL_CHIADO;
-        let provider = new ethers.providers.JsonRpcProvider(chiNode);
-        let wallet = new ethers.Wallet(process.env.PK, provider);
-        let signer = wallet.provider.getSigner(wallet.address)
-        
-        goerliCharon = new ethers.Contract(goerliCharon,"charonAMM/contracts/Charon.sol:Charon", provider)
-        chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", chiadoAddress, signer)
+        goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", goerliAddress)
         toSubmit = []
         inputIds = []
         let filter = chiadoCharon.filters.DepositToOtherChain()
@@ -98,12 +98,20 @@ async function tellorPush() {
         filter = goerliCharon.filters.OracleDeposit()
         let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
         for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
-            inputIds.push(thisId);
+            console.log(oracleEvents[i].args._oracleIndex)
+            if(oracleEvents[i].args._oracleIndex == 1){
+                thisId = oracleEvents[i].args._inputData;
+                inputIds.push(thisId);
+            }
         }
+        console.log("inputIds",inputIds)
         for(i = 0; i< events.length; i++){
-            if(inputIds.indexOf(events[i].args._depositId) == -1){
+            console.log("e",events[i].args._depositId * 1 )
+            if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
                     toSubmit.push(events[i].args._depositId)
+            }
+            else{
+                console.log("already pushed chi",events[i].args._depositId )
             }
             console.log("need push for Id's: ", toSubmit)
         }
@@ -125,65 +133,71 @@ async function tellorPush() {
                 }
             }
             else{
-                _tx = await tellor.submitValue(_query.queryId, _value,_query.nonce, _query.queryData);
+                _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
                 console.log("submitting value for id :", toSubmit[i])
             }
         }
         //now for mumbai
         toSubmit = []
         inputIds = []
-        let mumNode = process.env.NODE_URL_MUMBAI;
-        provider = new ethers.providers.JsonRpcProvider(mumNode);
-        wallet = new ethers.Wallet(process.env.PK, provider);
-        signer = wallet.provider.getSigner(wallet.address)
-        mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress, signer)
-        let filter = mumbaiCharon.filters.DepositToOtherChain()
-        let events = await mumbaiCharon.queryFilter(filter, startTime , "latest")
+        filter = mumbaiCharon.filters.DepositToOtherChain()
+        events = await mumbaiCharon.queryFilter(filter, startTime , "latest")
         filter = goerliCharon.filters.OracleDeposit()
-        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
+        oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
         for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
-            inputIds.push(thisId);
+            if(oracleEvents[i].args._oracleIndex == 0){
+                thisId = oracleEvents[i].args._inputData;
+                inputIds.push(thisId);
+            }
         }
-        console.log("inputIds ", inputIds)
         for(i = 0; i< events.length; i++){
             toSubmit.push(events[i].transactionHash)
             console.log("need push for Id's: ", toSubmit)
         }
-        let payload, _r, content
+        let _r, content
         for(i = 0; i < toSubmit.length; i++){
             //get txn from api
             _r = await fetch('https://apis.matic.network/api/v1/mumbai/exit-payload/' + toSubmit[i] +'?eventSignature=0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036').then(response => response.json());
             content = await _r.result
-            if(inputIds.indexOf(toSubmit[i]) == -1){
-                await goerliCharon.oracleDeposit([0], content)
-                console.log("oracle deposit synced on mumbai!", toSubmit[i])
+            if(inputIds.indexOf(content) == -1){
+                if(content){
+                    await goerliCharon.oracleDeposit([0], content)
+                    console.log("oracle deposit synced on mumbai!", toSubmit[i])
+                }
+                else{
+                    console.log("not ready to push content",i , content)
+                }
+
             }
             else{
-                console.log("already submitted for ", i)
+                console.log("already submitted for mum ", i)
             }
         }
 
         console.log("oracle deposit done on goerli from matic")
     }
     else if(_networkName == "mumbai"){
+        mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress)
         //to do, loop through all stateId's and check if they've been submitted, start at oldest
         let stateIds = await p2e.getStateIds()
         console.log("stateIds", stateIds);
         let toSubmit = []
         let inputIds = []
         filter = mumbaiCharon.filters.OracleDeposit()
-        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
+        let  oracleEvents = await mumbaiCharon.queryFilter(filter, startTime , "latest")
         for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
+            thisId = parseInt(oracleEvents[i].args._inputData);
             inputIds.push(thisId);
         }
         console.log("oracle pushes happened ", inputIds)
         for(i = 0; i < stateIds.length; i++){
             //see if stateID pushed already
-            if(inputIds.indexOf(stateIds[i]) == -1){
+            if(inputIds.indexOf(stateIds[i] * 1) == -1){
                 console.log("need to push ", stateIds[i])
                 toSubmit.push(stateIds[i])
+            }
+            else{
+                console.log("already pushed it!")
             }
         }
         for(i = 0; i < toSubmit.length; i++){
