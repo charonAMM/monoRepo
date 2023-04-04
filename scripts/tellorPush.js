@@ -20,6 +20,7 @@ e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
 p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
 startTime = 0;
 
+
 async function tellorPush() {
     let _networkName = hre.network.name
     let tellor
@@ -63,9 +64,9 @@ async function tellorPush() {
             if(inputIds.indexOf(events[i].args._depositId) == -1){
                     toSubmit.push(events[i].args._depositId)
             }
-            console.log("submitting for Id's: ", toSubmit)
         }
-        let _query,_value, _tx, _ts
+        let _query,_value, _tx, _ts;
+        let submits = 0;
         for(i=0;i<toSubmit.length;i++){
             _query = await getTellorData(tellor,goerliAddress,5,toSubmit[i]);
             _value = await goerliCharon.getOracleSubmission(toSubmit[i]);
@@ -83,8 +84,14 @@ async function tellorPush() {
                 }
             }
             else{
-                _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
-                console.log("submitting for id :", toSubmit[i])
+                if(submits == 0){
+                    _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
+                    console.log("submitting for id :", toSubmit[i])
+                }
+                else{
+                    console.log("reporter in lock for ID: ", toSubmit[i])
+                }
+                submits = 1
             }
         }
 
@@ -98,24 +105,18 @@ async function tellorPush() {
         filter = goerliCharon.filters.OracleDeposit()
         let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
         for(i = 0; i< oracleEvents.length; i++){
-            console.log(oracleEvents[i].args._oracleIndex)
             if(oracleEvents[i].args._oracleIndex == 1){
-                thisId = oracleEvents[i].args._inputData;
+                thisId = parseInt(oracleEvents[i].args._inputData);
                 inputIds.push(thisId);
             }
         }
-        console.log("inputIds",inputIds)
         for(i = 0; i< events.length; i++){
-            console.log("e",events[i].args._depositId * 1 )
             if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
                     toSubmit.push(events[i].args._depositId)
             }
-            else{
-                console.log("already pushed chi",events[i].args._depositId )
-            }
-            console.log("need push for Id's: ", toSubmit)
         }
         let _query,_value, _tx, _ts
+        let submits = 0;
         for(i=0;i<toSubmit.length;i++){
             _query = await getTellorData(tellor,chiadoAddress,10200,toSubmit[i]);
             _value = await chiadoCharon.getOracleSubmission(toSubmit[i]);
@@ -125,16 +126,22 @@ async function tellorPush() {
                 //if yes do oracle deposit
                 if(Date.now()/1000 - _ts > 86400/2){
                     _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                    await goerliCharon.oracleDeposit([0],_encoded);
-                    console.log("oracleDeposit for id :", toSubmit[i])
+                    //await goerliCharon.oracleDeposit([1],_encoded);
+                    console.log("oracleDeposit from chiado, id :", toSubmit[i])
                 }
                 else{
                     console.log("need more time for Id: ",toSubmit[i])
                 }
             }
             else{
-                _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
-                console.log("submitting value for id :", toSubmit[i])
+                if(submits == 0){
+                    _tx = await tellor.submitValue(_query.queryId, _value,0, _query.queryData);
+                    console.log("submitting value for id :", toSubmit[i])
+                }
+                else{
+                    console.log("reporter in lock for ID: ", toSubmit[i])
+                }
+                submits = 1;
             }
         }
         //now for mumbai
@@ -152,7 +159,6 @@ async function tellorPush() {
         }
         for(i = 0; i< events.length; i++){
             toSubmit.push(events[i].transactionHash)
-            console.log("need push for Id's: ", toSubmit)
         }
         let _r, content
         for(i = 0; i < toSubmit.length; i++){
@@ -162,25 +168,19 @@ async function tellorPush() {
             if(inputIds.indexOf(content) == -1){
                 if(content){
                     await goerliCharon.oracleDeposit([0], content)
-                    console.log("oracle deposit synced on mumbai!", toSubmit[i])
+                    console.log("oracle deposit from mumbai!", toSubmit[i])
                 }
                 else{
                     console.log("not ready to push content",i , content)
                 }
-
-            }
-            else{
-                console.log("already submitted for mum ", i)
             }
         }
-
         console.log("oracle deposit done on goerli from matic")
     }
     else if(_networkName == "mumbai"){
         mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", mumbaiAddress)
         //to do, loop through all stateId's and check if they've been submitted, start at oldest
         let stateIds = await p2e.getStateIds()
-        console.log("stateIds", stateIds);
         let toSubmit = []
         let inputIds = []
         filter = mumbaiCharon.filters.OracleDeposit()
@@ -189,23 +189,17 @@ async function tellorPush() {
             thisId = parseInt(oracleEvents[i].args._inputData);
             inputIds.push(thisId);
         }
-        console.log("oracle pushes happened ", inputIds)
         for(i = 0; i < stateIds.length; i++){
-            //see if stateID pushed already
             if(inputIds.indexOf(stateIds[i] * 1) == -1){
-                console.log("need to push ", stateIds[i])
                 toSubmit.push(stateIds[i])
-            }
-            else{
-                console.log("already pushed it!")
             }
         }
         for(i = 0; i < toSubmit.length; i++){
             let _id = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
             await mumbaiCharon.oracleDeposit([0],_id)
-            console.log("oracle deposit synced on mumbai!", toSubmit[i])
+            console.log("oracle deposit on mumbai!", toSubmit[i])
         }
-        console.log("oracle deposit synced on mumbai done")
+        console.log("deposits on mumbai done")
     }
 }
 

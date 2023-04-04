@@ -91,21 +91,20 @@ async function runChecks() {
     await run("compile")
     console.log("running manual checks on :  ", _networkName)
 
-    if(_networkName == "_goerli"){
-        await cit.transfer(b, web3.utils.toWei("1"))
-        console.log("cit transfer done")
-
-        await baseToken.approve(cit.address,web3.utils.toWei("100"))
-        await cit.bid(web3.utils.toWei("100"))
-        console.log("bid successful")
-    }
     charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", charon)
     cfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", cfc)
     cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", cit)
     baseToken = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", baseToken)
     chd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", chd)
     builtPoseidon = await buildPoseidon()
+    if(_networkName == "goerli"){
+        // await cit.transfer(b, web3.utils.toWei("1"))
+        // console.log("cit transfer done")
 
+        await baseToken.approve(cit.address,web3.utils.toWei("100"))
+        await cit.bid(web3.utils.toWei("100"))
+        console.log("bid successful")
+    }
 
     let _depositAmount = utils.parseEther('10');
     let recBal = await charon.recordBalance();
