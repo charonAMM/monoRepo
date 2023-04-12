@@ -9,17 +9,16 @@ require("dotenv").config();
 const web3 = require('web3');
 const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const fetch = require('node-fetch')
-
+const c = require("./contractAddys.js")
 
 //npx hardhat run scripts/tellorPush.js --network chiado
 tellorAddress = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
-goerliAddress =  '0x6E2eCf3adec22D80AC3f96479C734e6eB4DFD090'
-chiadoAddress = "0x20301cC7f8d4c734Fd3EAa6038ee3693e0fe8443"
-mumbaiAddress = "0x2157EE35E7ecc7B66Ad61B82A79d522a44B1aa84"
-e2p =  "0x2A51B6F68c38625fa0404b2a7ebA8B773e1220A6"
-p2e =  "0xFfED80cF5c45e7463AFd9e0fc664B5C6583B4363"
+goerliAddress =  c.ETHEREUM_CHARON
+chiadoAddress = c.GNOSIS_CHARON
+mumbaiAddress = c.POLYGON_CHARON
+e2p =  c.ETHEREUM_ETHTOPOLBRIDGE
+p2e =  c.POLYGON_POLTOETHBRIDGE
 startTime = 0;
-
 
 async function tellorPush() {
     let _networkName = hre.network.name
