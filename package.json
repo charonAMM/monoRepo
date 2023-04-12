@@ -7,6 +7,7 @@
     "circuit": "./scripts/buildCircuit.sh 2 && ./scripts/buildCircuit.sh 16",
     "compile": "npx hardhat compile && yarn compile:hasher",
     "deploy": "./scripts/deploySystem.sh",
+    "dailyChecks": "./scripts/dailyScript.sh",
     "compile:hasher": "npx hardhat hasher",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run circuit && npm run compile"

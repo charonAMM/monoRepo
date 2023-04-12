@@ -145,6 +145,14 @@ console.log("CHD Total Supply", ethers.utils.formatEther(await mumChd.totalSuppl
 
 
 // What's the current price on each chain
+
+let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
+let ETHCHDPrice = ethers.utils.formatEther(await goerliCharon.getSpotPrice()) / ethPrice
+let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
+
+console.log("Gnosis CHD Price : ", GNOCHDPrice)
+console.log("Ethereum CHD Price : ", ETHCHDPrice)
+console.log("Polygon CHD Price : ", POLCHDPrice)
 // What's the arb opportunity
 // How many times was each function run in past day
 // TVL / TDV
