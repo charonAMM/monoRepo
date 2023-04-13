@@ -9,7 +9,11 @@ const web3 = require('web3');
 //npx hardhat run scripts/dailyChecks.js --network mumbai
 var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
 var b = "0x2a4eA8464bd2DaC1Ad4f841Dcc7A8EFB4d84A27d"
-const fetch = require('node-fetch')
+const fetch = require('node-fetch');
+const { buildPoseidon } = require("circomlibjs");
+const { Keypair } = require("../src/keypair.js");
+const Utxo = require("../src/utxo.js");
+const { toFixedHex } = require('../src/utils.js')
 
 function poseidon(inputs){
     let val = builtPoseidon(inputs)
@@ -18,6 +22,33 @@ function poseidon(inputs){
 
 function poseidon2(a,b){
 return poseidon([a,b])
+}
+
+async function getPrivateBalance(charonInstance, myKeypair,chainID){
+    let filter = charonInstance.filters.NewCommitment()
+    let events = await charonInstance.queryFilter(filter,0,"latest")
+    let thisUTXO
+    let myAmount = 0
+    let myNullifier;
+    for(i = 0; i< events.length; i++){
+        try {
+            thisUTXO = Utxo.decrypt(myKeypair, events[i].args._encryptedOutput, events[i].args._index)
+            thisUTXO.chainID = chainID;
+            //nowCreate nullifier
+            try{
+                myNullifier = thisUTXO.getNullifier(poseidon)
+                myNullifier = toFixedHex(myNullifier)
+                if(!await charonInstance.isSpent(myNullifier)){
+                    myAmount += parseInt(thisUTXO.amount);
+                }
+            }catch{
+                console.log("nullifier error", i)
+            }
+        } catch{
+            //console.log("not here")
+        }
+    }
+    return ethers.utils.formatEther(myAmount.toString());
 }
 
 
@@ -48,7 +79,7 @@ async function runChecks() {
         ethPrice = 1800
         console.log("couldn't fetch eth price")
     }
-
+    builtPoseidon = await buildPoseidon()
     let gnoNode = process.env.NODE_URL_GOERLI;
     let polNode = process.env.NODE_URL_MUMBAI;
     let chiNode = process.env.NODE_URL_CHIADO;
@@ -76,16 +107,20 @@ let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
 
-//finalize
 console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await goerliCharon.balanceOf(myAddress)))
 console.log( "my balance POLYGON pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))
 console.log( "my balance GNOSIS pool tokens: ", ethers.utils.formatEther(await chiadoCharon.balanceOf(myAddress)))
 
-
 console.log( "my balance ETHEREUM CHD tokens: ", ethers.utils.formatEther(await ethChd.balanceOf(myAddress)))
 console.log( "my balance POLYGON CHD tokens: ", ethers.utils.formatEther(await mumChd.balanceOf(myAddress)))
 console.log( "my balance GNOSIS CHD tokens: ", ethers.utils.formatEther(await chiChd.balanceOf(myAddress)))
-console.log("my CIT balance")
+
+let myKeypair = new Keypair({privkey:process.env.PK, myHashFunc: poseidon});
+console.log("my private balance ETHEREUM CHD", await getPrivateBalance(goerliCharon,myKeypair,5))
+console.log("my private balance GNOSIS CHD", await getPrivateBalance(chiadoCharon,myKeypair,10200))
+console.log("my private balance POLYGON CHD", await getPrivateBalance(mumbaiCharon,myKeypair,80001))
+
+// console.log("my CIT balance")
 
 console.log("ETHEREUM")
 console.log("RecordBalance: ",ethers.utils.formatEther(await goerliCharon.recordBalance()))
@@ -105,7 +140,7 @@ console.log("RecordBalance: ",ethers.utils.formatEther(await mumbaiCharon.record
 console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await mumbaiCharon.recordBalanceSynth()))
 console.log("Total Supply: ",ethers.utils.formatEther(await mumbaiCharon.totalSupply()))
 console.log("CHD Total Supply", ethers.utils.formatEther(await mumChd.totalSupply()))
-// console.log("..all variables initialized correctly")
+console.log("..all variables initialized correctly")
 
 // if(Date.now()/1000 - await cit.endDate() > 0){console.log("CIT Auction is over and ready to start new round!")}
 
