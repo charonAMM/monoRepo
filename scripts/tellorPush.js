@@ -54,13 +54,13 @@ async function tellorPush() {
         let filter = goerliCharon.filters.DepositToOtherChain()
         let events = await goerliCharon.queryFilter(filter, startTime , "latest")
         filter = chiadoCharon.filters.OracleDeposit()
-        let  oracleEvents = await goerliCharon.queryFilter(filter, startTime , "latest")
+        let  oracleEvents = await chiadoCharon.queryFilter(filter, startTime , "latest")
         for(i = 0; i< oracleEvents.length; i++){
-            thisId = oracleEvents[i]._inputData;
+            thisId = parseInt(oracleEvents[i].args._inputData);
             inputIds.push(thisId);
         }
         for(i = 0; i< events.length; i++){
-            if(inputIds.indexOf(events[i].args._depositId) == -1){
+            if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
                     toSubmit.push(events[i].args._depositId)
             }
         }
@@ -75,7 +75,7 @@ async function tellorPush() {
                 //if yes do oracle deposit
                 if(Date.now()/1000 - _ts > 86400/2){
                     _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                    await chiadoCharon.oracleDeposit([0],_encoded);
+                    //await chiadoCharon.oracleDeposit([0],_encoded);
                     console.log("oracleDeposit for id :", toSubmit[i])
                 }
                 else{
