@@ -4,17 +4,15 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 const hre = require("hardhat");
 require("dotenv").config();
-const { verify } = require("crypto");
 const web3 = require('web3');
 const HASH = require("../build/Hasher.json");
-const { exit } = require("process");
 
-//npx hardhat run scripts/deploySystem.js --network goerli
+//npx hardhat run scripts/testDeploy.js --network sepolia
 //FOR MAINNET, turn tree variables private!!
 //charonAMM Variables
 var fee = web3.utils.toWei(".006");//.6
 var HEIGHT = 23;
-var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
+var myAddress = "0xACE235Da5C594C3DdE316393Ad59a6f55F930be8"
 
 async function deploy(contractName, ...args) {
     const Factory = await ethers.getContractFactory(contractName)
@@ -23,7 +21,7 @@ async function deploy(contractName, ...args) {
 }
 
 async function deploySystem() {
-    let  p2e, e2p, tellorBridge,oracles,base, fxRoot, checkpointManager
+    let  tellorBridge1,tellorBridge2,oracles,base
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId
 
@@ -33,43 +31,25 @@ async function deploySystem() {
 
     if(_networkName == "mumbai"){
         base = "https://mumbai.polygonscan.com/address/"
-        fxchild = "0xCf73231F28B7331BBe3124B907840A94851f9f11"  //https://wiki.polygon.technology/docs/develop/l1-l2-communication/state-transfer/
-        // baseToken = "0x23D57956cE5a07D60CbCA5CeceA8afC506DE013D"
-        // charon = "0x28af28Bb3C63Be91751cf64ac16E5b0f73A8aB10"
-        // oracle = "0x3b94C0a8ba635d4356b66bedE55C82115d9CaFEF"
-        
-        p2e = await deploy("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", tellor,fxchild)
-        console.log("POLtoETHBridge deployed to: ", p2e.address);
-        oracles = [p2e.address]
     }
     else if(_networkName == "sepolia"){
         base = "https://sepolia.etherscan.io/address/"
-        fxRoot = "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA"
-        checkpointManager = "0x2890bA17EfE978480615e330ecB65333b880928e"
-        // baseToken = "0x524547A8f3188f8Be5c5699e5eC93E0693EA84b9"
-        // charon = "0xdF76f7D5C15689ee175b1b73eF12855565bd07D3"
-        // oracle = "0xbBB4148Cc9bde1c9b938AF6b225E8b5260D9078C"
-
-        //deploy e2p / tellorBridge
-        e2p = await deploy("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge", tellor,checkpointManager,fxRoot)
-        console.log("ETHtoPOLBridge deployed to: ", e2p.address);
-        tellorBridge = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
-        console.log("TellorBridge deployed to: ", tellorBridge.address);
-        oracles = [e2p.address, tellorBridge.address]
+        tellor = "0x199839a4907ABeC8240D119B606C98c405Bb0B33"
     }
     else if(_networkName == "chiado"){
         base = "https://blockscout.chiadochain.net/address/"
-        // baseToken = "0xAda4924b1B5803980CF3F45C2dE1c8DcafF9FBd5"
-        // charon = "0xD3e83D65a08220D9eEF8c8E1167A5E0881Df7550"
-        // oracle = "0xa643c48A80FFEeF6Eb5868bc786aC81Eb132799d"
-        tellorBridge = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
-        console.log("TellorBridge deployed to: ", tellorBridge.address);
-        oracles = [tellorBridge.address]
     }
     else{
         console.log("No network name ", _networkName, " found")
         process.exit(1)
     }
+
+    tellorBridge1 = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
+    console.log("TellorBridge1 deployed to: ", tellorBridge1.address);
+    tellorBridge2 = await deploy("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellor)
+    console.log("TellorBridge2 deployed to: ", tellorBridge2.address);
+    oracles = [tellorBridge1.address, tellorBridge2.address]
+
     //deploying Verifier Contracts
     let verifier2 = await deploy("Verifier2")
     console.log("verifier 2 contract deployed to: ", base + verifier2.address);
@@ -97,28 +77,23 @@ async function deploySystem() {
     console.log("cfc deployed to ", base + cfc.address)
 
     let cit;
-    if(_networkName == "goerli"){
-        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT")
+    if(_networkName == "sepolia"){
+        cfc = "0x5eE7f2C6EF0419036aadCD82cEd424bB1b098d1C"
+        b = "0x4708CB6E65215AFfa61790C8241B3f313C829f99"
+        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",b,web3.utils.toWei("10000"),86400 * 7,cfc,"Charon Incentive Token", "CIT")
         console.log("CIT deployed to ", base + cit.address)
+        console.log(cit.address)
+
+        await run("verify:verify",{
+            address: cit.address,
+            contract: "incentiveToken/contracts/Auction.sol:Auction",
+            constructorArguments: [b,web3.utils.toWei("10000"),86400 * 7,cfc,"Charon Incentive Token", "CIT"]
+        })
+        console.log("cit verified")    
+
     }
     else{
         console.log("no CIT on this network")
-    }
-
-    console.log("baseToken = ", '"'+ baseToken.address + '"')
-    console.log("charon = ", '"'+ charon.address + '"')
-    console.log("chd = ", '"'+ chd.address + '"')
-    console.log("cfc = ", '"'+ cfc.address + '"')
-    if(_networkName == "goerli"){
-        console.log("cit = ", '"'+ cit.address + '"')
-        console.log("e2p = ", '"'+ e2p.address + '"')
-        console.log("tellorBridge = ", '"'+ tellorBridge.address + '"')
-    }
-    else if(_networkName == "mumbai"){
-        console.log("p2e = ", '"'+ p2e.address + '"')
-    }
-    else if(_networkName == "chiado"){
-        console.log("tellorBridge = ", '"'+ tellorBridge.address + '"')
     }
 
     console.log("verifier2")
@@ -128,17 +103,12 @@ async function deploySystem() {
     console.log("charon")
     console.log("cfc")
     console.log("chd")
-    if(_networkName == "goerli"){
+    if(_networkName == "sepolia"){
         console.log("cit")
-        console.log("ETHtoPOLBridge")
-        console.log("tellorBridge")
     }
-    else if(_networkName == "mumbai"){
-        console.log("POLToETHBridge")
-    }
-    else if(_networkName == "chiado"){
-        console.log("tellorBridge")
-    }
+    console.log("tellorBridge1")
+    console.log("tellorBridge2")
+
     console.log(verifier2.address)
     console.log(verifier16.address)
     console.log(hasher.address)
@@ -146,18 +116,8 @@ async function deploySystem() {
     console.log(charon.address)
     console.log(cfc.address)
     console.log(chd.address)
-    if(_networkName == "goerli"){
-        console.log(cit.address)
-        console.log(e2p.address)
-        console.log(tellorBridge.address)
-    }
-    else if(_networkName == "mumbai"){
-        console.log(p2e.address)
-    }
-    else if(_networkName == "chiado"){
-        console.log(tellorBridge.address)
-    }
-
+    console.log(tellorBridge1.address)
+    console.log(tellorBridge2.address)
     //now verify
     try{
         await run("verify:verify",{
@@ -193,7 +153,21 @@ async function deploySystem() {
         })
         console.log("cfc verified")
 
-        if(_networkName == "goerli"){
+        await run("verify:verify",{
+            address: tellorBridge1.address,
+            contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
+            constructorArguments: [tellor]
+        })
+        console.log("tellorBridge1 verified")
+
+        await run("verify:verify",{
+            address: tellorBridge2.address,
+            contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
+            constructorArguments: [tellor]
+        })
+        console.log("tellorBridge2 verified")
+
+        if(_networkName == "sepolia"){
             try{
                 await run("verify:verify",{
                     address: cit.address,
@@ -205,35 +179,6 @@ async function deploySystem() {
             catch{
                 console.log("WARNING: may need to manually verify CIT")
             }
-            await run("verify:verify",{
-                address: e2p.address,
-                contract: "charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",
-                constructorArguments: [tellor,checkpointManager,fxRoot]
-            })
-            console.log("e2p verified")
-        
-            await run("verify:verify",{
-                address: tellorBridge.address,
-                contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
-                constructorArguments: [tellor]
-            })
-            console.log("tellorBridge verified")
-        }
-        else if(_networkName == "chiado"){
-            await run("verify:verify",{
-                address: tellorBridge.address,
-                contract: "charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge",
-                constructorArguments: [tellor]
-            })
-            console.log("tellorBridge verified")
-        }
-        else if(_networkName == "mumbai"){
-            await run("verify:verify",{
-                address: p2e.address,
-                contract: "charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge",
-                constructorArguments: [tellor,fxchild]
-            })
-            console.log("p2e verified")
         }
     }catch(err){
         console.log("error verifying : ", err);

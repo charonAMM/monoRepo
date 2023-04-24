@@ -34,7 +34,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           },
         },
       },
@@ -45,7 +45,7 @@ const config = {
         settings: { 
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           }
         }
       },
@@ -54,7 +54,7 @@ const config = {
         settings: { 
           optimizer: {
             enabled: true,
-            runs: 2,
+            runs: 200,
           }
         }
       },
@@ -66,19 +66,19 @@ const config = {
       initialBaseFeePerGas: 5,
       //allowUnlimitedContractSize: true
     },
-    goerli: {
-           url: `${process.env.NODE_URL_GOERLI}`,
+    sepolia: {
+           url: `${process.env.NODE_URL_SEPOLIA}`,
            accounts: [process.env.PK],
-           gas: 4000000,
-           chainId:5,
-           gasPrice: 170000000000
+           gas: 9000000,
+           chainId:11155111,
+           gasPrice: 3000000000
       } ,
     mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
         accounts: [process.env.PK],
         gas: 9000000,
         chainId: 80001,
-        gasPrice: 30000000000
+        gasPrice: 4000000000
     } ,
     chiado: {
         url: `${process.env.NODE_URL_CHIADO}`,
@@ -90,7 +90,7 @@ const config = {
   },
   etherscan: {
     apiKey: {
-      goerli: process.env.ETHERSCAN_KEY,
+      sepolia: process.env.ETHERSCAN_KEY,
       polygonMumbai: process.env.POLYGONSCAN_KEY,
       chiado: process.env.BLOCKSCOUT_KEY,
     },
