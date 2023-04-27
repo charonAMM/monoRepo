@@ -14,12 +14,13 @@ const { BigNumber } = require("ethers")
 const { prepareTransaction } = require('../src/index');
 const { Keypair } = require("../src/keypair");
 //npx hardhat run scripts/manualRuns.js --network mumbai
-let tellor,base,baseToken,charon,chd,cit,cfc,builtPoseidon;
+let cit,builtPoseidon;
 var fee = web3.utils.toWei(".006");//.6
-var HEIGHT = 23;
-var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
-var b = "0x2a4eA8464bd2DaC1Ad4f841Dcc7A8EFB4d84A27d"
-let myKeypair
+var myAddress = process.env.PUBLICKEY
+
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+  }
 
 function poseidon(inputs){
     let val = builtPoseidon(inputs)
@@ -30,6 +31,9 @@ function poseidon2(a,b){
 return poseidon([a,b])
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function getPrivateBalance(charonInstance, myKeypair,chainID){
     let filter = charonInstance.filters.NewCommitment()
@@ -61,13 +65,13 @@ async function getPrivateBalance(charonInstance, myKeypair,chainID){
 async function runChecks() {
 
     let xDaiPrice,maticPrice,ethPrice;
-    let gnoNode = process.env.NODE_URL_GOERLI;
+    let ethNode = process.env.NODE_URL_SEPOLIA;
     let polNode = process.env.NODE_URL_MUMBAI;
     let chiNode = process.env.NODE_URL_CHIADO;
-    let provider = new ethers.providers.JsonRpcProvider(gnoNode);
+    let provider = new ethers.providers.JsonRpcProvider(ethNode);
     let wallet = new ethers.Wallet(process.env.PK, provider);
-    let gnoSigner = wallet.provider.getSigner(wallet.address)
-    goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, gnoSigner)
+    let ethSigner = wallet.provider.getSigner(wallet.address)
+    sepCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, ethSigner)
     provider = new ethers.providers.JsonRpcProvider(chiNode);
     wallet = new ethers.Wallet(process.env.PK, provider);
     let chiSigner = wallet.provider.getSigner(wallet.address)
@@ -103,7 +107,7 @@ async function runChecks() {
     }
 
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
-let ETHCHDPrice = ethers.utils.formatEther(await goerliCharon.getSpotPrice()) / ethPrice
+let ETHCHDPrice = ethers.utils.formatEther(await sepCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
 console.log("GnosisCHDPrice", GNOCHDPrice)
 console.log("ETHCHDPrice",ETHCHDPrice)
@@ -114,28 +118,40 @@ console.log("POLCHDPrice",POLCHDPrice)
     let _amount,tellor, base, baseToken, charon, chd, cfc, cChainIDs;
     tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     if(_networkName == "mumbai"){
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://mumbai.polygonscan.com/address/"
         baseToken =  c.POLYGON_BASETOKEN
         charon =  c.POLYGON_CHARON
         chd =  c.POLYGON_CHD
         cfc =  c.POLYGON_CFC
-        cChainIDs = [5]
+        tellorBridge1 = c.POLYGON_TELLORBRIDGE1
+        tellorBridge2 = c.POLYGON_TELLORBRIDGE2
+        cChainIDs = [11155111,10200]
+        cAddys = [c.ETHEREUM_CHARON,c.GNOSIS_CHARON]
     }
-    else if(_networkName == "goerli"){
-        base = "https://goerli.etherscan.io/address/"
+    else if(_networkName == "sepolia"){
+        tellor = "0x199839a4907ABeC8240D119B606C98c405Bb0B33"
+        base = "https://sepolia.etherscan.io/address/"
         baseToken =  c.ETHEREUM_BASETOKEN
         charon =  c.ETHEREUM_CHARON
         chd =  c.ETHEREUM_CHD
         cfc =  c.ETHEREUM_CFC
+        tellorBridge1 = c.ETHEREUM_TELLORBRIDGE1
+        tellorBridge2 = c.ETHEREUM_TELLORBRIDGE2     
         cChainIDs = [80001,10200]
+        cAddys = [c.POLYGON_CHARON,c.GNOSIS_CHARON]
     }
     else if(_networkName == "chiado"){
+        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
         base = "https://blockscout.chiadochain.net/address/"
         baseToken =  c.GNOSIS_BASETOKEN
         charon =  c.GNOSIS_CHARON
         chd =  c.GNOSIS_CHD
         cfc =  c.GNOSIS_CFC
-        cChainIDs = [5]
+        tellorBridge1 = c.GNOSIS_TELLORBRIDGE1
+        tellorBridge2 = c.GNOSIS_TELLORBRIDGE2  
+        cChainIDs = [11155111,80001]
+        cAddys = [c.ETHEREUM_CHARON,c.POLYGON_CHARON]
     }
     else{
         console.log("No network name ", _networkName, " found")
@@ -159,8 +175,8 @@ console.log("POLCHDPrice",POLCHDPrice)
     _chdSwap = false
     _withdraw = false
     _withdrawCHD = false
-    _rand = Math.floor(ETHCHDPrice) % 2
-    if(_networkName == "goerli"){
+    _rand = getRandomInt(2)
+    if(_networkName == "sepolia"){
         let topBid = await cit.currentTopBid()
         await baseToken.approve(cit.address,topBid + web3.utils.toWei("1"))
         await cit.bid(topBid + web3.utils.toWei("1"))
@@ -217,6 +233,23 @@ console.log("POLCHDPrice",POLCHDPrice)
                 _lpCHD = true
             }
         }
+      if(POLCHDPrice > GNOCHDPrice){
+            if (_rand == 1){
+                _swap = true
+                _deposit2 = true
+            }
+            else{
+                _lp = true
+            }
+        }
+        else{
+            if (_rand == 1){
+                _chdSwap = true
+            }
+            else{
+                _lpCHD = true
+            }
+        }
     }else if(_networkName == "chiado"){
         if(GNOCHDPrice > ETHCHDPrice){
             if (_rand == 1){
@@ -235,12 +268,32 @@ console.log("POLCHDPrice",POLCHDPrice)
                 _lpCHD = true
             }
         }
+        if(GNOCHDPrice > POLCHDPrice){
+            if (_rand == 1){
+                _swap = true
+                _deposit = true
+            }
+            else{
+                _lp = true
+            }
+        }
+        else{
+            if (_rand == 1){
+                _chdSwap = true
+                _deposit2 = true
+            }
+            else{
+                _lpCHD = true
+            }
+        }
     }
     if(_deposit){
+        let charon2 = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", cAddys[0])
         let _depositAmount = utils.parseEther('10');
         let recBal = await charon.recordBalance();
         let recSynthBal = await charon.recordBalanceSynth();
         await baseToken.mint(myAddress,web3.utils.toWei("100"))
+        sleep(5000)
         console.log("tokens minted")
         _Camount = await charon.calcInGivenOut(recBal,
                                                 recSynthBal,
@@ -248,11 +301,12 @@ console.log("POLCHDPrice",POLCHDPrice)
                                                 fee)
     
         await baseToken.approve(charon.address,_Camount)
+        await sleep(5000)
         console.log("tokens approved")
         let myKey = await new Keypair({privkey:process.env.PK, myHashFunc:poseidon})
         let aliceDepositUtxo = new Utxo({ amount: _depositAmount,keypair:myKey, myHashFunc: poseidon, chainID:cChainIDs[0] })
         let inputData = await prepareTransaction({
-            charon:charon,
+            charon:charon2,
             inputs:[],
             outputs: [aliceDepositUtxo],
             account: {
@@ -266,19 +320,61 @@ console.log("POLCHDPrice",POLCHDPrice)
         let args = inputData.args
         let extData = inputData.extData
         await charon.depositToOtherChain(args,extData,false,_Camount);
+        await sleep(5000)
+        console.log("deposited to other chain succesfully ")
+    }
+    if(_deposit2){
+        let charon2 = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", cAddys[1])
+        let _depositAmount = utils.parseEther('10');
+        let recBal = await charon.recordBalance();
+        let recSynthBal = await charon.recordBalanceSynth();
+        await baseToken.mint(myAddress,web3.utils.toWei("100"))
+        await sleep(5000)
+        console.log("tokens minted")
+        _Camount = await charon.calcInGivenOut(recBal,
+                                                recSynthBal,
+                                                _depositAmount,
+                                                fee)
+    
+        await baseToken.approve(charon.address,_Camount)
+        await sleep(5000)
+        console.log("tokens approved")
+        let myKey = new Keypair({ privkey: process.env.PK, myHashFunc: poseidon })
+        let aliceDepositUtxo = new Utxo({ amount: _depositAmount,keypair:myKey, myHashFunc: poseidon, chainID:cChainIDs[1] })
+        let inputData = await prepareTransaction({
+            charon:charon2,
+            inputs:[],
+            outputs: [aliceDepositUtxo],
+            account: {
+                owner: myAddress,
+                publicKey: aliceDepositUtxo.keypair.address(),
+            },
+            privateChainID: cChainIDs[1],
+            myHasherFunc: poseidon,
+            myHasherFunc2: poseidon2
+        })
+        let args = inputData.args
+        let extData = inputData.extData
+        await charon.depositToOtherChain(args,extData,false,_Camount);
+        await sleep(5000)
         console.log("deposited to other chain succesfully ")
     }
     if(_swap){
         _adjAmount = BigNumber.from(_amount).div(50)
         await baseToken.approve(charon.address,_adjAmount)
+        await sleep(5000)
         console.log("approved for swap : ", _adjAmount)
         await charon.swap(false,_adjAmount,0,web3.utils.toWei("999999"))
+        await sleep(5000)
         console.log("swap succesfully performed")
     }
     if(_lp){
         await chd.approve(charon.address,web3.utils.toWei("5000"))
+        await sleep(5000)
         await baseToken.approve(charon.address,web3.utils.toWei("1000"))
+        await sleep(5000)
         await charon.lpDeposit(web3.utils.toWei("0.5"),web3.utils.toWei("5000"),web3.utils.toWei("1000"))
+        await sleep(5000)
         console.log("successfully LPDeposit")
     }
 }

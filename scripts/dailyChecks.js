@@ -7,8 +7,7 @@ const c = require("./contractAddys.js")
 require("dotenv").config();
 const web3 = require('web3');
 //npx hardhat run scripts/dailyChecks.js --network mumbai
-var myAddress = "0xD109A7BD41F2bECE58885f1B04b607B5034FfbeD"
-var b = "0x2a4eA8464bd2DaC1Ad4f841Dcc7A8EFB4d84A27d"
+var myAddress = process.env.PUBLICKEY
 const fetch = require('node-fetch');
 const { buildPoseidon } = require("circomlibjs");
 const { Keypair } = require("../src/keypair.js");
@@ -18,10 +17,6 @@ const { toFixedHex } = require('../src/utils.js')
 function poseidon(inputs){
     let val = builtPoseidon(inputs)
     return builtPoseidon.F.toString(val)
-}
-
-function poseidon2(a,b){
-return poseidon([a,b])
 }
 
 async function getPrivateBalance(charonInstance, myKeypair,chainID){
@@ -80,13 +75,13 @@ async function runChecks() {
         console.log("couldn't fetch eth price")
     }
     builtPoseidon = await buildPoseidon()
-    let gnoNode = process.env.NODE_URL_GOERLI;
+    let gnoNode = process.env.NODE_URL_SEPOLIA;
     let polNode = process.env.NODE_URL_MUMBAI;
     let chiNode = process.env.NODE_URL_CHIADO;
     let provider = new ethers.providers.JsonRpcProvider(gnoNode);
     let wallet = new ethers.Wallet(process.env.PK, provider);
     let gnoSigner = wallet.provider.getSigner(wallet.address)
-    goerliCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, gnoSigner)
+    sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, gnoSigner)
     provider = new ethers.providers.JsonRpcProvider(chiNode);
     wallet = new ethers.Wallet(process.env.PK, provider);
     let chiSigner = wallet.provider.getSigner(wallet.address)
@@ -95,8 +90,6 @@ async function runChecks() {
     wallet = new ethers.Wallet(process.env.PK, provider);
     let mumSigner = wallet.provider.getSigner(wallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
-    p2e = await hre.ethers.getContractAt("charonAMM/contracts/bridges/POLtoETHBridge.sol:POLtoETHBridge", c.POLYGON_POLTOETHBRIDGE, mumSigner)
-    e2p = await hre.ethers.getContractAt("charonAMM/contracts/bridges/ETHtoPOLBridge.sol:ETHtoPOLBridge",c.ETHEREUM_ETHTOPOLBRIDGE, gnoSigner)
     console.log("running daily checks")
 
 let ethCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.ETHEREUM_CFC, gnoSigner)
@@ -107,7 +100,7 @@ let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
 
-console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await goerliCharon.balanceOf(myAddress)))
+console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await sepoliaCharon.balanceOf(myAddress)))
 console.log( "my balance POLYGON pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))
 console.log( "my balance GNOSIS pool tokens: ", ethers.utils.formatEther(await chiadoCharon.balanceOf(myAddress)))
 
@@ -116,16 +109,16 @@ console.log( "my balance POLYGON CHD tokens: ", ethers.utils.formatEther(await m
 console.log( "my balance GNOSIS CHD tokens: ", ethers.utils.formatEther(await chiChd.balanceOf(myAddress)))
 
 let myKeypair = new Keypair({privkey:process.env.PK, myHashFunc: poseidon});
-console.log("my private balance ETHEREUM CHD", await getPrivateBalance(goerliCharon,myKeypair,5))
+console.log("my private balance ETHEREUM CHD", await getPrivateBalance(sepoliaCharon,myKeypair,5))
 console.log("my private balance GNOSIS CHD", await getPrivateBalance(chiadoCharon,myKeypair,10200))
 console.log("my private balance POLYGON CHD", await getPrivateBalance(mumbaiCharon,myKeypair,80001))
 
 // console.log("my CIT balance")
 
 console.log("ETHEREUM")
-console.log("RecordBalance: ",ethers.utils.formatEther(await goerliCharon.recordBalance()))
-console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await goerliCharon.recordBalanceSynth()))
-console.log("Total Supply: ",ethers.utils.formatEther(await goerliCharon.totalSupply()))
+console.log("RecordBalance: ",ethers.utils.formatEther(await sepoliaCharon.recordBalance()))
+console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await sepoliaCharon.recordBalanceSynth()))
+console.log("Total Supply: ",ethers.utils.formatEther(await sepoliaCharon.totalSupply()))
 console.log("CHD Total Supply", ethers.utils.formatEther(await ethChd.totalSupply()))
 console.log("CIT TotalSupply ", ethers.utils.formatEther(await cit.totalSupply()))
 
@@ -150,7 +143,7 @@ console.log("..all variables initialized correctly")
 
 
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
-let ETHCHDPrice = ethers.utils.formatEther(await goerliCharon.getSpotPrice()) / ethPrice
+let ETHCHDPrice = ethers.utils.formatEther(await sepoliaCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
 
 console.log("Gnosis CHD Price : ", GNOCHDPrice)

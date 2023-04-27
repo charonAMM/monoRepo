@@ -85,7 +85,7 @@ const config = {
         accounts: [process.env.PK],
         gas: 9000000,
         chainId: 10200,
-        gasPrice: 11000000000
+        gasPrice: 1000000000
     } ,
   },
   etherscan: {
