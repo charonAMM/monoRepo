@@ -6,14 +6,19 @@ const hre = require("hardhat");
 const abiCoder = new ethers.utils.AbiCoder()
 const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
-const web3 = require('web3');
-const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
-const fetch = require('node-fetch')
+const { abi } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const c = require("./contractAddys.js")
 
 //npx hardhat run scripts/tellorPush.js --network chiado
 
-async function tellorSubmits(_charon1, _charon2, _tellor, _chain2){ //e.g. chi, sep, t on chi
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+let submits = 0;
+async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.g. chi, sep, t on chi
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
     toSubmit = []
     inputIds = []
     let filter = _charon2.filters.DepositToOtherChain()
@@ -30,40 +35,38 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2){ //e.g. chi, 
         }
     }
     let _query,_value, _tx, _ts;
-    let submits = 0;
     for(i=0;i<toSubmit.length;i++){
         _query = await getTellorData(_tellor,_charon2.address,_chain2,toSubmit[i]);
         _value = await _charon2.getOracleSubmission(toSubmit[i]);
-        if(_query.nonce > 0){
-            //check if 12 hours old
-            _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
-            //if yes do oracle deposit
-            if(Date.now()/1000 - _ts > 86400/2){
-                _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                await _charon1.oracleDeposit([0],_encoded);
-                await sleep(5000)
-                console.log("oracleDeposit for id :", toSubmit[i])
-            }else{
-                console.log("need more time for Id: ",toSubmit[i])
-            }
-        }else{
+        // if(_query.nonce > 0){
+        //     //check if 12 hours old
+        //     _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
+        //     //if yes do oracle deposit
+        //     if(Date.now()/1000 - _ts > 86400/2){
+        //         _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
+        //         await _charon1.oracleDeposit(_index,_encoded,_feeData);
+        //         await sleep(5000)
+        //         console.log("oracleDeposit for id :", toSubmit[i])
+        //     }else{
+        //         console.log("need more time for Id: ",toSubmit[i])
+        //     }
+        // }else{
             if(submits == 0){
-                _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData);
+                _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
                 await sleep(5000)
                 console.log("submitting for id :", toSubmit[i])
+                submits = 1
             }
             else{
                 console.log("reporter in lock for ID: ", toSubmit[i])
             }
-            submits = 1
-        }
+        // }
     }
 }
 
 async function tellorPush() {
     let _networkName = hre.network.name
     let tellor
-
     await run("compile")
     console.log("running oracle deposit on :  ", _networkName)
     eth_charon = c.ETHEREUM_CHARON
@@ -75,40 +78,40 @@ async function tellorPush() {
         tellorAddress = "0x199839a4907ABeC8240D119B606C98c405Bb0B33"
     }
     //charonAMM
-    let gnoNode = process.env.NODE_URL_SEPOLIA;
-    let polNode = process.env.NODE_URL_MUMBAI;
-    let chiNode = process.env.NODE_URL_CHIADO;
     let sepChain = 11155111
     let mumChain = 80001
     let chiChain = 10200
-    let provider = new ethers.providers.JsonRpcProvider(gnoNode);
-    let wallet = new ethers.Wallet(process.env.PK, provider);
-    let signer = wallet.provider.getSigner(wallet.address)
-    sepCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, signer)
     tellor = await hre.ethers.getContractAt(abi, tellorAddress,hre.provider);
-    provider = new ethers.providers.JsonRpcProvider(chiNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
-    signer = wallet.provider.getSigner(wallet.address)
-    chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON,signer)
-    provider = new ethers.providers.JsonRpcProvider(polNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
-    signer = wallet.provider.getSigner(wallet.address)
-    mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,signer)
-
+    let ethNode = process.env.NODE_URL_SEPOLIA;
+    let polNode = process.env.NODE_URL_MUMBAI;
+    let chiNode = process.env.NODE_URL_CHIADO;
+    let eprovider = new ethers.providers.JsonRpcProvider(ethNode);
+    let ewallet = new ethers.Wallet(process.env.PK, eprovider);
+    let ethSigner = ewallet.provider.getSigner(ewallet.address)
+    sepCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, ethSigner)
+    cprovider = new ethers.providers.JsonRpcProvider(chiNode);
+    cwallet = new ethers.Wallet(process.env.PK, cprovider);
+    let chiSigner = cwallet.provider.getSigner(cwallet.address)
+    chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON, chiSigner)
+    mprovider = new ethers.providers.JsonRpcProvider(polNode);
+    mwallet = new ethers.Wallet(process.env.PK, mprovider);
+    let mumSigner = mwallet.provider.getSigner(mwallet.address)
+    mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
 
     if(_networkName == "chiado"){
-        await tellorSubmits(chiadoCharon,sepCharon,tellor,sepChain);
-        await tellorSubmits(chiadoCharon,mumbaiCharon,tellor, mumChain);
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON)
+        await tellorSubmits(charon,sepCharon,tellor,sepChain,0);
+        await tellorSubmits(charon,mumbaiCharon,tellor, mumChain,1);
         console.log("tellorPush finished on chiado")
-    }
-    else if(_networkName == "sepolia"){
-        await tellorSubmits(sepCharon,chiadoCharon,tellor, chiChain);
-        await tellorSubmits(sepCharon,mumbaiCharon,tellor, mumChain);
+    }else if(_networkName == "sepolia"){
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON)
+        await tellorSubmits(charon,chiadoCharon,tellor, chiChain,1);
+        await tellorSubmits(charon,mumbaiCharon,tellor, mumChain,0);
         console.log("tellorPush finished on sepolia")
-    }
-    else if(_networkName == "mumbai"){
-        await tellorSubmits(mumbaiCharon,sepCharon,tellor, sepChain);
-        await tellorSubmits(mumbaiCharon,chiadoCharon,tellor, chiChain);
+    }else if(_networkName == "mumbai"){
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON)
+        await tellorSubmits(charon,sepCharon,tellor, sepChain,0);
+        await tellorSubmits(charon,chiadoCharon,tellor, chiChain,1);
         console.log("tellorPush finished on mumbai")
     }
 }

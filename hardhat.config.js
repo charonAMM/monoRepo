@@ -70,22 +70,19 @@ const config = {
            url: `${process.env.NODE_URL_SEPOLIA}`,
            accounts: [process.env.PK],
            gas: 9000000,
-           chainId:11155111,
-           gasPrice: 3000000000
+           chainId:11155111
       } ,
     mumbai: {
         url: `${process.env.NODE_URL_MUMBAI}`,
         accounts: [process.env.PK],
         gas: 9000000,
-        chainId: 80001,
-        gasPrice: 4000000000
+        chainId: 80001
     } ,
     chiado: {
         url: `${process.env.NODE_URL_CHIADO}`,
         accounts: [process.env.PK],
         gas: 9000000,
-        chainId: 10200,
-        gasPrice: 1000000000
+        chainId: 10200
     } ,
   },
   etherscan: {

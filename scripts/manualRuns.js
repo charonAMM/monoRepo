@@ -167,6 +167,10 @@ console.log("POLCHDPrice",POLCHDPrice)
     baseToken = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", baseToken)
     chd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", chd)
     builtPoseidon = await buildPoseidon()
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
+    console.log(_feeData)
     _lp = false
     _lpCHD = false
     _deposit = false
@@ -178,8 +182,8 @@ console.log("POLCHDPrice",POLCHDPrice)
     _rand = getRandomInt(2)
     if(_networkName == "sepolia"){
         let topBid = await cit.currentTopBid()
-        await baseToken.approve(cit.address,topBid + web3.utils.toWei("1"))
-        await cit.bid(topBid + web3.utils.toWei("1"))
+        await baseToken.approve(cit.address,topBid + web3.utils.toWei("1"),_feeData)
+        await cit.bid(topBid + web3.utils.toWei("1"),_feeData)
         console.log("bid successful")
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
@@ -292,7 +296,7 @@ console.log("POLCHDPrice",POLCHDPrice)
         let _depositAmount = utils.parseEther('10');
         let recBal = await charon.recordBalance();
         let recSynthBal = await charon.recordBalanceSynth();
-        await baseToken.mint(myAddress,web3.utils.toWei("100"))
+        await baseToken.mint(myAddress,web3.utils.toWei("100"),_feeData)
         sleep(5000)
         console.log("tokens minted")
         _Camount = await charon.calcInGivenOut(recBal,
@@ -300,7 +304,7 @@ console.log("POLCHDPrice",POLCHDPrice)
                                                 _depositAmount,
                                                 fee)
     
-        await baseToken.approve(charon.address,_Camount)
+        await baseToken.approve(charon.address,_Camount,_feeData)
         await sleep(5000)
         console.log("tokens approved")
         let myKey = await new Keypair({privkey:process.env.PK, myHashFunc:poseidon})
@@ -319,7 +323,7 @@ console.log("POLCHDPrice",POLCHDPrice)
         })
         let args = inputData.args
         let extData = inputData.extData
-        await charon.depositToOtherChain(args,extData,false,_Camount);
+        await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
         await sleep(5000)
         console.log("deposited to other chain succesfully ")
     }
@@ -328,7 +332,7 @@ console.log("POLCHDPrice",POLCHDPrice)
         let _depositAmount = utils.parseEther('10');
         let recBal = await charon.recordBalance();
         let recSynthBal = await charon.recordBalanceSynth();
-        await baseToken.mint(myAddress,web3.utils.toWei("100"))
+        await baseToken.mint(myAddress,web3.utils.toWei("100"),_feeData)
         await sleep(5000)
         console.log("tokens minted")
         _Camount = await charon.calcInGivenOut(recBal,
@@ -336,7 +340,7 @@ console.log("POLCHDPrice",POLCHDPrice)
                                                 _depositAmount,
                                                 fee)
     
-        await baseToken.approve(charon.address,_Camount)
+        await baseToken.approve(charon.address,_Camount,_feeData)
         await sleep(5000)
         console.log("tokens approved")
         let myKey = new Keypair({ privkey: process.env.PK, myHashFunc: poseidon })
@@ -355,13 +359,13 @@ console.log("POLCHDPrice",POLCHDPrice)
         })
         let args = inputData.args
         let extData = inputData.extData
-        await charon.depositToOtherChain(args,extData,false,_Camount);
+        await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
         await sleep(5000)
         console.log("deposited to other chain succesfully ")
     }
     if(_swap){
         _adjAmount = BigNumber.from(_amount).div(50)
-        await baseToken.approve(charon.address,_adjAmount)
+        await baseToken.approve(charon.address,_adjAmount,_feeData)
         await sleep(5000)
         console.log("approved for swap : ", _adjAmount)
         await charon.swap(false,_adjAmount,0,web3.utils.toWei("999999"))
@@ -369,11 +373,11 @@ console.log("POLCHDPrice",POLCHDPrice)
         console.log("swap succesfully performed")
     }
     if(_lp){
-        await chd.approve(charon.address,web3.utils.toWei("5000"))
+        await chd.approve(charon.address,web3.utils.toWei("5000"),_feeData)
         await sleep(5000)
-        await baseToken.approve(charon.address,web3.utils.toWei("1000"))
+        await baseToken.approve(charon.address,web3.utils.toWei("1000"),_feeData)
         await sleep(5000)
-        await charon.lpDeposit(web3.utils.toWei("0.5"),web3.utils.toWei("5000"),web3.utils.toWei("1000"))
+        await charon.lpDeposit(web3.utils.toWei("0.5"),web3.utils.toWei("5000"),web3.utils.toWei("1000"),_feeData)
         await sleep(5000)
         console.log("successfully LPDeposit")
     }

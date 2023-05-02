@@ -19,6 +19,24 @@ function poseidon(inputs){
     return builtPoseidon.F.toString(val)
 }
 
+function timeLeft(timestamp) {
+    const now = Date.now();
+    const timeLeft = timestamp - now;
+    const seconds = Math.floor(timeLeft / 1000);
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((seconds % (60 * 60)) / 60);
+    let timeString = '';
+    if (days > 0) {
+       timeString += days + ' day' + (days > 1 ? 's' : '') + ', ';
+    }
+    if (hours > 0) {
+       timeString += hours + ' hour' + (hours > 1 ? 's' : '') + ', ';
+    }
+    timeString += minutes + ' minute' + (minutes > 1 ? 's' : '');
+    return timeString;
+ }
+
 async function getPrivateBalance(charonInstance, myKeypair,chainID){
     let filter = charonInstance.filters.NewCommitment()
     let events = await charonInstance.queryFilter(filter,0,"latest")
@@ -75,13 +93,13 @@ async function runChecks() {
         console.log("couldn't fetch eth price")
     }
     builtPoseidon = await buildPoseidon()
-    let gnoNode = process.env.NODE_URL_SEPOLIA;
+    let sNode = process.env.NODE_URL_SEPOLIA;
     let polNode = process.env.NODE_URL_MUMBAI;
     let chiNode = process.env.NODE_URL_CHIADO;
-    let provider = new ethers.providers.JsonRpcProvider(gnoNode);
+    let provider = new ethers.providers.JsonRpcProvider(sNode);
     let wallet = new ethers.Wallet(process.env.PK, provider);
-    let gnoSigner = wallet.provider.getSigner(wallet.address)
-    sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, gnoSigner)
+    let sepSigner = wallet.provider.getSigner(wallet.address)
+    sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, sepSigner)
     provider = new ethers.providers.JsonRpcProvider(chiNode);
     wallet = new ethers.Wallet(process.env.PK, provider);
     let chiSigner = wallet.provider.getSigner(wallet.address)
@@ -91,12 +109,12 @@ async function runChecks() {
     let mumSigner = wallet.provider.getSigner(wallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
     console.log("running daily checks")
-
-let ethCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.ETHEREUM_CFC, gnoSigner)
+let cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.ETHEREUM_CIT, sepSigner)
+let ethCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.ETHEREUM_CFC, sepSigner)
 let chiCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.GNOSIS_CFC, chiSigner)
 let mumCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.POLYGON_CFC, mumSigner)
-cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.ETHEREUM_CIT, gnoSigner)
-let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_CHD, gnoSigner)
+cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.ETHEREUM_CIT, sepSigner)
+let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_CHD, sepSigner)
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
 
@@ -135,13 +153,6 @@ console.log("Total Supply: ",ethers.utils.formatEther(await mumbaiCharon.totalSu
 console.log("CHD Total Supply", ethers.utils.formatEther(await mumChd.totalSupply()))
 console.log("..all variables initialized correctly")
 
-// if(Date.now()/1000 - await cit.endDate() > 0){console.log("CIT Auction is over and ready to start new round!")}
-
-// let feePeriod = await cfc.getFeePeriods()
-// let thisPeriod = await cfc.getFeePeriodByTimestamp(feePeriod[feePeriod.length - 1])
-// if(Date.now()/1000 - thisPeriod.endDate > 0){console.log("fee period is ready for token balance reporting and distribution!")
-
-
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
 let ETHCHDPrice = ethers.utils.formatEther(await sepoliaCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
@@ -149,10 +160,10 @@ let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / 
 console.log("Gnosis CHD Price : ", GNOCHDPrice)
 console.log("Ethereum CHD Price : ", ETHCHDPrice)
 console.log("Polygon CHD Price : ", POLCHDPrice)
-// What's the arb opportunity
-// How many times was each function run in past day
-// TVL / TDV
-// Amount of CHD LP'd, free floating public / private
+
+console.log("Auction info")
+console.log("top bid :", ethers.utils.formatEther(await cit.currentTopBid()))
+console.log("time left in auction :", timeLeft(await cit.endDate()* 1000))
 
 }
 
