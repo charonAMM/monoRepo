@@ -16,12 +16,19 @@ let gnoAmount = web3.utils.toWei("10000")
 let ethAmount = web3.utils.toWei("5.47")
 let polAmount = web3.utils.toWei("10416.65")
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function finalizePools() {
     let _amount, tellorBridge1, tellorBridge2;
     let _networkName = hre.network.name
     await run("compile")
     console.log("initializing and finalizing charon system to: ", _networkName)
     cit = c.ETHEREUM_CIT
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
 
     if(_networkName == "mumbai"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
@@ -66,27 +73,27 @@ async function finalizePools() {
         console.log("No network name ", _networkName, " found")
         process.exit(1)
     }
-    // myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge1)
-    // await myContract.setPartnerInfo(cAddys[0],cChainIDs[0]);
-    // console.log("tellorBridge1 partner info set")
+    myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge1)
+    await myContract.setPartnerInfo(cAddys[0],cChainIDs[0], _feeData);
+    console.log("tellorBridge1 partner info set")
 
-    // myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge2)
-    // await myContract.setPartnerInfo(cAddys[1],cChainIDs[1]);
-    // console.log("tellorBridge2 partner info set")
+    myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge2)
+    await myContract.setPartnerInfo(cAddys[1],cChainIDs[1], _feeData);
+    console.log("tellorBridge2 partner info set")
 
-    // myContract = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", cfc)
-    // await myContract.setCit(cit, 11155111, chd);
-    // console.log("cit address set")
+    myContract = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", cfc)
+    await myContract.setCit(cit, 11155111, chd, _feeData);
+    console.log("cit address set")
 
-    // myContract = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", baseToken)
-    // await myContract.mint(myAddress, _amount)
-    // console.log("token minted")
+    myContract = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", baseToken)
+    await myContract.mint(myAddress, _amount, _feeData)
+    console.log("token minted")
 
-    // await myContract.approve(charon, _amount)//100
+    await myContract.approve(charon, _amount, _feeData)//100
     console.log("base token approved")
 
     myContract = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon",charon)
-    await myContract.finalize(cChainIDs,cAddys,_amount,chdMint,chd,cfc);
+    await myContract.finalize(cChainIDs,cAddys,_amount,chdMint,chd,cfc, _feeData);
     console.log("charon finalized")
 }
 

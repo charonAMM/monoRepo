@@ -23,6 +23,9 @@ async function deploy(contractName, ...args) {
 }
 
 async function deploySystem() {
+        let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
     let  p2e, e2p, tellorBridge,oracles,base, fxRoot, checkpointManager
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId

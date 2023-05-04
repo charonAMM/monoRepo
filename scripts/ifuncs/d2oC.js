@@ -34,6 +34,9 @@ function sleep(ms) {
 }
 
 async function d2oC() {
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
     let _networkName = hre.network.name
     cit =  c.ETHEREUM_CIT
     let tellor, base, baseToken, charon, chd, cfc, cChainIDs;
@@ -86,10 +89,10 @@ async function d2oC() {
                                             _depositAmount,
                                             0)
 
-    await baseToken.mint(myAddress,_Camount);
+    await baseToken.mint(myAddress,_Camount,_feeData);
     await sleep(5000)
     console.log("tokens minted")
-    await baseToken.approve(charon.address,_Camount)
+    await baseToken.approve(charon.address,_Camount,_feeData)
     await sleep(5000)
     console.log("tokens approved")
     let myKey = new Keypair({ privkey: process.env.PK, myHashFunc: poseidon })
@@ -104,7 +107,7 @@ async function d2oC() {
     })
     let args = inputData.args
     let extData = inputData.extData
-    await charon.depositToOtherChain(args,extData,false,_Camount);
+    await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
     await sleep(5000)
     console.log("deposited to other chain succesfully ")
 }

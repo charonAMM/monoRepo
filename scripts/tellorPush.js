@@ -30,7 +30,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
         inputIds.push(thisId);
     }
     for(i = 0; i< events.length; i++){
-        if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
+        if(inputIds.indexOf(events[i].args._depositId * 1) == -1 && events[i].args._depositId * 1 > 2){
                 toSubmit.push(events[i].args._depositId)
         }
     }
@@ -38,19 +38,21 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
     for(i=0;i<toSubmit.length;i++){
         _query = await getTellorData(_tellor,_charon2.address,_chain2,toSubmit[i]);
         _value = await _charon2.getOracleSubmission(toSubmit[i]);
-        // if(_query.nonce > 0){
-        //     //check if 12 hours old
-        //     _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
-        //     //if yes do oracle deposit
-        //     if(Date.now()/1000 - _ts > 86400/2){
-        //         _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-        //         await _charon1.oracleDeposit(_index,_encoded,_feeData);
-        //         await sleep(5000)
-        //         console.log("oracleDeposit for id :", toSubmit[i])
-        //     }else{
-        //         console.log("need more time for Id: ",toSubmit[i])
-        //     }
-        // }else{
+        _ts = await hre.ethers.provider.getBlock()
+        _value = abiCoder.encode(['bytes', 'uint256'],[_value,_ts.timestamp]);
+        if(_query.nonce > 0){
+            //check if 12 hours old
+            _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
+            //if yes do oracle deposit
+            if(Date.now()/1000 - _ts > 86400/2){
+                _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
+                await _charon1.oracleDeposit(_index,_encoded,_feeData);
+                await sleep(5000)
+                console.log("oracleDeposit for id :", toSubmit[i])
+            }else{
+                console.log("need more time for Id: ",toSubmit[i])
+            }
+        }else{
             if(submits == 0){
                 _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
                 await sleep(5000)
@@ -60,7 +62,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
             else{
                 console.log("reporter in lock for ID: ", toSubmit[i])
             }
-        // }
+         }
     }
 }
 

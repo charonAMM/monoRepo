@@ -8,15 +8,22 @@ const web3 = require('web3');
 const HASH = require("../build/Hasher.json");
 
 //npx hardhat run scripts/testDeploy.js --network sepolia
-//FOR MAINNET, turn tree variables private!!
 //charonAMM Variables
 var fee = web3.utils.toWei(".006");//.6
 var HEIGHT = 23;
 var myAddress = "0xACE235Da5C594C3DdE316393Ad59a6f55F930be8"
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function deploy(contractName, ...args) {
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
     const Factory = await ethers.getContractFactory(contractName)
-    const instance = await Factory.deploy(...args)
+    const instance = await Factory.deploy(...args,_feeData)
+    await sleep(5000)
     return instance.deployed()
 }
 
@@ -78,19 +85,9 @@ async function deploySystem() {
 
     let cit;
     if(_networkName == "sepolia"){
-        cfc = "0x5eE7f2C6EF0419036aadCD82cEd424bB1b098d1C"
-        b = "0x4708CB6E65215AFfa61790C8241B3f313C829f99"
-        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",b,web3.utils.toWei("10000"),86400 * 7,cfc,"Charon Incentive Token", "CIT")
+        cit = await deploy("incentiveToken/contracts/Auction.sol:Auction",baseToken.address,web3.utils.toWei("10000"),86400 * 7,cfc.address,"Charon Incentive Token", "CIT")
         console.log("CIT deployed to ", base + cit.address)
-        console.log(cit.address)
-
-        await run("verify:verify",{
-            address: cit.address,
-            contract: "incentiveToken/contracts/Auction.sol:Auction",
-            constructorArguments: [b,web3.utils.toWei("10000"),86400 * 7,cfc,"Charon Incentive Token", "CIT"]
-        })
-        console.log("cit verified")    
-
+        console.log(cit.address) 
     }
     else{
         console.log("no CIT on this network")
@@ -103,9 +100,6 @@ async function deploySystem() {
     console.log("charon")
     console.log("cfc")
     console.log("chd")
-    if(_networkName == "sepolia"){
-        console.log("cit")
-    }
     console.log("tellorBridge1")
     console.log("tellorBridge2")
 

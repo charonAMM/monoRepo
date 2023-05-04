@@ -170,7 +170,6 @@ console.log("POLCHDPrice",POLCHDPrice)
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
-    console.log(_feeData)
     _lp = false
     _lpCHD = false
     _deposit = false
@@ -361,14 +360,13 @@ console.log("POLCHDPrice",POLCHDPrice)
         let extData = inputData.extData
         await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
         await sleep(5000)
-        console.log("deposited to other chain succesfully ")
+        console.log("deposited to other chain succesfully2 ")
     }
     if(_swap){
-        _adjAmount = BigNumber.from(_amount).div(50)
-        await baseToken.approve(charon.address,_adjAmount,_feeData)
+        await baseToken.approve(charon.address,web3.utils.toWei("1"),_feeData)
         await sleep(5000)
         console.log("approved for swap : ", _adjAmount)
-        await charon.swap(false,_adjAmount,0,web3.utils.toWei("999999"))
+        await charon.swap(false,web3.utils.toWei("1"),0,web3.utils.toWei("999999"))
         await sleep(5000)
         console.log("swap succesfully performed")
     }
