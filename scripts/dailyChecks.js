@@ -7,7 +7,7 @@ const c = require("./contractAddys.js")
 require("dotenv").config();
 const web3 = require('web3');
 //npx hardhat run scripts/dailyChecks.js --network mumbai
-var myAddress = process.env.PUBLICKEY
+var myAddress = process.env.MAINNETKEY
 const fetch = require('node-fetch');
 const { buildPoseidon } = require("circomlibjs");
 const { Keypair } = require("../src/keypair.js");
@@ -93,11 +93,11 @@ async function runChecks() {
         console.log("couldn't fetch eth price")
     }
     builtPoseidon = await buildPoseidon()
-    let sNode = process.env.NODE_URL_SEPOLIA;
-    let polNode = process.env.NODE_URL_MUMBAI;
-    let chiNode = process.env.NODE_URL_CHIADO;
+    let sNode = process.env.NODE_URL_OPTIMISM;
+    let polNode = process.env.NODE_URL_POLYGON;
+    let chiNode = process.env.NODE_URL_GNOSIS;
     let provider = new ethers.providers.JsonRpcProvider(sNode);
-    let wallet = new ethers.Wallet(process.env.PK, provider);
+    let wallet = new ethers.Wallet(process.env.MAINPK, provider);
     let sepSigner = wallet.provider.getSigner(wallet.address)
     sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, sepSigner)
     provider = new ethers.providers.JsonRpcProvider(chiNode);
@@ -109,11 +109,10 @@ async function runChecks() {
     let mumSigner = wallet.provider.getSigner(wallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
     console.log("running daily checks")
-let cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.ETHEREUM_CIT, sepSigner)
+let cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.CIT, chiSigner)
 let ethCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.ETHEREUM_CFC, sepSigner)
 let chiCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.GNOSIS_CFC, chiSigner)
 let mumCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", c.POLYGON_CFC, mumSigner)
-cit = await hre.ethers.getContractAt("incentiveToken/contracts/Auction.sol:Auction", c.ETHEREUM_CIT, sepSigner)
 let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_CHD, sepSigner)
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)

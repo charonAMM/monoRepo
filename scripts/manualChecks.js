@@ -6,58 +6,55 @@ const hre = require("hardhat");
 require("dotenv").config();
 const web3 = require('web3');
 const c = require("./contractAddys.js")
-//npx hardhat run scripts/manualChecks.js --network mumbai
+//npx hardhat run scripts/manualChecks.js --network gnosis
 
 var fee = web3.utils.toWei(".006");//.6
 var HEIGHT = 23;
-var myAddress = process.env.PUBLICKEY
+var myAddress = process.env.MAINNETKEY
 let chdMint = web3.utils.toWei("10000")
 let gnoAmount = web3.utils.toWei("10000")
-let ethAmount = web3.utils.toWei("5.47")
-let polAmount = web3.utils.toWei("10416.65")
+let ethAmount = web3.utils.toWei("5.5")
+let polAmount = web3.utils.toWei("11620.69")
 
 async function runChecks() {
     let _networkName = hre.network.name
     let chainID = hre.network.config.chainId
-    let cit =  c.ETHEREUM_CIT
+    let cit =  c.CIT
     let _amount,myContract,baseToken, charon, chd, cfc, cChainIDs, cAddys;
-
-    if(_networkName == "mumbai"){
-        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
-        base = "https://mumbai.polygonscan.com/address/"
+    tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    if(_networkName == "polygon"){
+        base = "https://polygonscan.com/address/"
         baseToken =  c.POLYGON_BASETOKEN
         charon =  c.POLYGON_CHARON
         chd =  c.POLYGON_CHD
         cfc =  c.POLYGON_CFC
         tellorBridge1 = c.POLYGON_TELLORBRIDGE1
         tellorBridge2 = c.POLYGON_TELLORBRIDGE2
-        cChainIDs = [11155111,10200]
+        cChainIDs = [10,100]
         cAddys = [c.ETHEREUM_CHARON,c.GNOSIS_CHARON]
         _amount = polAmount;
     }
-    else if(_networkName == "sepolia"){
-        tellor = "0x199839a4907ABeC8240D119B606C98c405Bb0B33"
-        base = "https://sepolia.etherscan.io/address/"
+    else if(_networkName == "optimism"){
+        base = "https://optimistic.etherscan.io/address/"
         baseToken =  c.ETHEREUM_BASETOKEN
         charon =  c.ETHEREUM_CHARON
         chd =  c.ETHEREUM_CHD
         cfc =  c.ETHEREUM_CFC
         tellorBridge1 = c.ETHEREUM_TELLORBRIDGE1
         tellorBridge2 = c.ETHEREUM_TELLORBRIDGE2     
-        cChainIDs = [80001,10200]
+        cChainIDs = [137,100]
         cAddys = [c.POLYGON_CHARON,c.GNOSIS_CHARON]
         _amount = ethAmount
     }
-    else if(_networkName == "chiado"){
-        tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
-        base = "https://blockscout.chiadochain.net/address/"
+    else if(_networkName == "gnosis"){
+        base = "https://blockscout.com/xdai/mainnet/address/"
         baseToken =  c.GNOSIS_BASETOKEN
         charon =  c.GNOSIS_CHARON
         chd =  c.GNOSIS_CHD
         cfc =  c.GNOSIS_CFC
         tellorBridge1 = c.GNOSIS_TELLORBRIDGE1
         tellorBridge2 = c.GNOSIS_TELLORBRIDGE2  
-        cChainIDs = [11155111,80001]
+        cChainIDs = [10,137]
         cAddys = [c.ETHEREUM_CHARON,c.POLYGON_CHARON]
         _amount = gnoAmount
     }
@@ -109,7 +106,7 @@ if(thisPeriod.endDate - feePeriod != 0){console.log("end date should be set")}
 if(await cfc.token() != baseToken.address){console.log( "base token should be set")}
 if(await cfc.chd() !=chd.address){console.log("chd should be set")}
 //cit
-if(_networkName == "sepolia"){
+if(_networkName == "gnosis"){
     if(await cit.bidToken() != baseToken.address){console.log("token should be set")}
     if(await cit.mintAmount() != web3.utils.toWei("10000")){console.log("mint amount should be set")}
     if(await cit.auctionFrequency() != 86400*7){console.log("auction frequency should be set")}

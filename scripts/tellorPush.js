@@ -9,7 +9,7 @@ require("dotenv").config();
 const { abi } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const c = require("./contractAddys.js")
 
-//npx hardhat run scripts/tellorPush.js --network chiado
+//npx hardhat run scripts/tellorPush.js --network gnosis
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -19,6 +19,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
+    console.log("using fee Data: ", _feeData)
     toSubmit = []
     inputIds = []
     let filter = _charon2.filters.DepositToOtherChain()
@@ -76,45 +77,42 @@ async function tellorPush() {
     mum_charon = c.POLYGON_CHARON
     tellorAddress = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     startTime = 0;
-    if(_networkName == "sepolia"){
-        tellorAddress = "0x199839a4907ABeC8240D119B606C98c405Bb0B33"
-    }
     //charonAMM
     let sepChain = 11155111
     let mumChain = 80001
     let chiChain = 10200
     tellor = await hre.ethers.getContractAt(abi, tellorAddress,hre.provider);
-    let ethNode = process.env.NODE_URL_SEPOLIA;
-    let polNode = process.env.NODE_URL_MUMBAI;
-    let chiNode = process.env.NODE_URL_CHIADO;
+    let ethNode = process.env.NODE_URL_OPTIMISM;
+    let polNode = process.env.NODE_URL_POLYGON;
+    let chiNode = process.env.NODE_URL_GNOSIS;
     let eprovider = new ethers.providers.JsonRpcProvider(ethNode);
-    let ewallet = new ethers.Wallet(process.env.PK, eprovider);
+    let ewallet = new ethers.Wallet(process.env.MAINPK, eprovider);
     let ethSigner = ewallet.provider.getSigner(ewallet.address)
     sepCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, ethSigner)
     cprovider = new ethers.providers.JsonRpcProvider(chiNode);
-    cwallet = new ethers.Wallet(process.env.PK, cprovider);
+    cwallet = new ethers.Wallet(process.env.MAINPK, cprovider);
     let chiSigner = cwallet.provider.getSigner(cwallet.address)
     chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON, chiSigner)
     mprovider = new ethers.providers.JsonRpcProvider(polNode);
-    mwallet = new ethers.Wallet(process.env.PK, mprovider);
+    mwallet = new ethers.Wallet(process.env.MAINPK, mprovider);
     let mumSigner = mwallet.provider.getSigner(mwallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
 
-    if(_networkName == "chiado"){
+    if(_networkName == "gnosis"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON)
         await tellorSubmits(charon,sepCharon,tellor,sepChain,0);
         await tellorSubmits(charon,mumbaiCharon,tellor, mumChain,1);
-        console.log("tellorPush finished on chiado")
-    }else if(_networkName == "sepolia"){
+        console.log("tellorPush finished on gnosis")
+    }else if(_networkName == "optimism"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON)
         await tellorSubmits(charon,chiadoCharon,tellor, chiChain,1);
         await tellorSubmits(charon,mumbaiCharon,tellor, mumChain,0);
-        console.log("tellorPush finished on sepolia")
-    }else if(_networkName == "mumbai"){
+        console.log("tellorPush finished on optimism")
+    }else if(_networkName == "polygon"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON)
         await tellorSubmits(charon,sepCharon,tellor, sepChain,0);
         await tellorSubmits(charon,chiadoCharon,tellor, chiChain,1);
-        console.log("tellorPush finished on mumbai")
+        console.log("tellorPush finished on polygon")
     }
 }
 
