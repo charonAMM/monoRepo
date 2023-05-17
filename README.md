@@ -24,6 +24,7 @@ checks: npx hardhat run scripts/manualChecks.js --network networkName
 deploy data - 5/17/2023
 
 gnosis
+
     - verifier2 = 0xd2B162ea6Ace4c66E28e0110ec48B82a533091F7
     - veriifer16 = 0xCDaba71A7f6E27a40b4323E26d63Ab675f77Ac95
     - hahser = 0x515F87D08229917cAD8902e8d3D3c5C8de82b52f
