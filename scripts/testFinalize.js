@@ -75,26 +75,32 @@ async function finalizePools() {
     }
     myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge1)
     await myContract.setPartnerInfo(cAddys[0],cChainIDs[0], _feeData);
+    await sleep(5000)
     console.log("tellorBridge1 partner info set")
 
     myContract = await hre.ethers.getContractAt("charonAMM/contracts/bridges/TellorBridge.sol:TellorBridge", tellorBridge2)
     await myContract.setPartnerInfo(cAddys[1],cChainIDs[1], _feeData);
+    await sleep(5000)
     console.log("tellorBridge2 partner info set")
 
     myContract = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC", cfc)
     await myContract.setCit(cit, 11155111, chd, _feeData);
     console.log("cit address set")
+    await sleep(5000)
 
     myContract = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", baseToken)
     await myContract.mint(myAddress, _amount, _feeData)
     console.log("token minted")
+    await sleep(5000)
 
     await myContract.approve(charon, _amount, _feeData)//100
     console.log("base token approved")
+    await sleep(5000)
 
     myContract = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon",charon)
     await myContract.finalize(cChainIDs,cAddys,_amount,chdMint,chd,cfc, _feeData);
     console.log("charon finalized")
+    await sleep(5000)
 }
 
 finalizePools()

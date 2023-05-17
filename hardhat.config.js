@@ -16,7 +16,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           },
         },
       },
@@ -25,7 +25,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           },
         },
       },
@@ -34,7 +34,7 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           },
         },
       },
@@ -45,7 +45,7 @@ const config = {
         settings: { 
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           }
         }
       },
@@ -54,7 +54,7 @@ const config = {
         settings: { 
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 2,
           }
         }
       },
@@ -84,20 +84,42 @@ const config = {
         gas: 9000000,
         chainId: 10200
     } ,
+    optimism: {
+      url: `${process.env.NODE_URL_OPTIMISM}`,
+      accounts: [process.env.MAINPK],
+      gas: 9000000,
+      chainId:10
+    } ,
+    polygon: {
+      url: `${process.env.NODE_URL_POLYGON}`,
+      accounts: [process.env.MAINPK],
+      gas: 9000000,
+      gasPrice: 175000000000,
+      chainId: 137
+    } ,
+    gnosis: {
+      url: `${process.env.NODE_URL_GNOSIS}`,
+      accounts: [process.env.MAINPK],
+      gas: 9000000,
+      chainId: 100
+    } ,
   },
   etherscan: {
     apiKey: {
       sepolia: process.env.ETHERSCAN_KEY,
       polygonMumbai: process.env.POLYGONSCAN_KEY,
       chiado: process.env.BLOCKSCOUT_KEY,
+      optimisticEthereum:process.env.OPSCAN_KEY,
+      polygon:process.env.POLYGONSCAN_KEY,
+      gnosis:process.env.BLOCKSCOUT_KEY
     },
     customChains: [
       {
-        network: "chiado",
-        chainId: 10200,
+        network: "gnosis",
+        chainId: 100,
         urls: {
-          apiURL: "https://api-goerli.etherscan.io/api",
-          browserURL: "https://blockscout.chiadochain.net"
+          apiURL: "https://blockscout.com/xdai/mainnet/api",
+          browserURL: "https://blockscout.com/xdai/mainnet"
         }
       }
     ]

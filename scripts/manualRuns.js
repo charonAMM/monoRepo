@@ -181,9 +181,18 @@ console.log("POLCHDPrice",POLCHDPrice)
     _rand = getRandomInt(2)
     if(_networkName == "sepolia"){
         let topBid = await cit.currentTopBid()
-        await baseToken.approve(cit.address,topBid + web3.utils.toWei("1"),_feeData)
-        await cit.bid(topBid + web3.utils.toWei("1"),_feeData)
+        let amt = topBid.add(web3.utils.toWei("1"))
+        await baseToken.mint(myAddress, amt);
+        await baseToken.approve(cit.address,amt,_feeData)
+        await cit.bid(amt,_feeData)
         console.log("bid successful")
+        const now = Date.now();
+        if(await cit.endDate()* 1000 - now < 0){
+            await cit.startNewAuction();
+            console.log("new auction started")
+        }else(
+            console.log("new auction not started")
+        )
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -366,7 +375,7 @@ console.log("POLCHDPrice",POLCHDPrice)
         await baseToken.approve(charon.address,web3.utils.toWei("1"),_feeData)
         await sleep(5000)
         console.log("approved for swap : ", _adjAmount)
-        await charon.swap(false,web3.utils.toWei("1"),0,web3.utils.toWei("999999"))
+        await charon.swap(false,web3.utils.toWei("1"),0,web3.utils.toWei("999999"),_feeData)
         await sleep(5000)
         console.log("swap succesfully performed")
     }

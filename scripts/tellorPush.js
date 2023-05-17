@@ -30,7 +30,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
         inputIds.push(thisId);
     }
     for(i = 0; i< events.length; i++){
-        if(inputIds.indexOf(events[i].args._depositId * 1) == -1 && events[i].args._depositId * 1 > 2){
+        if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
                 toSubmit.push(events[i].args._depositId)
         }
     }
@@ -39,7 +39,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index){ //e.
         _query = await getTellorData(_tellor,_charon2.address,_chain2,toSubmit[i]);
         _value = await _charon2.getOracleSubmission(toSubmit[i]);
         _ts = await hre.ethers.provider.getBlock()
-        _value = abiCoder.encode(['bytes', 'uint256'],[_value,_ts.timestamp]);
+        _value = abiCoder.encode(['bytes', 'uint256'],[abiCoder.encode(['bytes'],[_value]),_ts.timestamp]);
         if(_query.nonce > 0){
             //check if 12 hours old
             _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)

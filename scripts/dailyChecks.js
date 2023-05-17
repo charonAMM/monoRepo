@@ -81,7 +81,7 @@ async function runChecks() {
         maticPrice = maticPrice["matic-network"]["usd"]
         console.log("matic price", maticPrice)
     }catch{
-        maticPrice = 1.15
+        maticPrice = 1
         console.log("couldnt fetch matic price")
     }
     try{

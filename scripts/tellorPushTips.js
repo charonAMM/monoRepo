@@ -6,10 +6,8 @@ const hre = require("hardhat");
 const abiCoder = new ethers.utils.AbiCoder()
 const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
-const web3 = require('web3');
 const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const { abi:abi2, bytecode2 } = require("usingtellor/artifacts/contracts/interface/ITellor.sol/ITellor.json")
-const fetch = require('node-fetch')
 const c = require("./contractAddys.js")
 
 //npx hardhat run scripts/tellorPushTips.js --network chiado
@@ -19,6 +17,9 @@ function sleep(ms) {
 
 
 async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2){ //e.g. chi, sep, t on chi
+    let _feeData = await hre.ethers.provider.getFeeData();
+    delete _feeData.lastBaseFeePerGas
+    delete _feeData.gasPrice
     toSubmit = []
     inputIds = []
     let filter = _charon2.filters.DepositToOtherChain()
@@ -44,17 +45,17 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2
             //if yes do oracle deposit
             if(Date.now()/1000 - _ts > 86400/2){
                 _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                await chiadoCharon.oracleDeposit([0],_encoded);
+                await chiadoCharon.oracleDeposit([0],_encoded,_feeData);
                 await sleep(5000)
                 console.log("oracleDeposit for id :", toSubmit[i],  " chainID", _chain2)
             }else{
                 console.log("need more time for Id: ",toSubmit[i])
             }
         }else{
-                await _trb.approve(_autopay.address,ethers.utils.parseUnits('1', "ether"))
+                await _trb.approve(_autopay.address,ethers.utils.parseUnits('1', "ether"),_feeData)
                 console.log("submitting approve")
                 await sleep(5000)
-                _tx - await _autopay.tip(_query.queryId,ethers.utils.parseUnits('1', "ether"),_query.queryData)
+                _tx - await _autopay.tip(_query.queryId,ethers.utils.parseUnits('1', "ether"),_query.queryData,_feeData)
                 await sleep(5000)
                 console.log("submitting tip for id :", toSubmit[i], " chainID", _chain2)
         }

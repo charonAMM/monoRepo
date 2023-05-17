@@ -5,7 +5,6 @@ require("@nomiclabs/hardhat-waffle");
 const hre = require("hardhat");
 require("dotenv").config();
 const c = require("../contractAddys.js")
-const web3 = require('web3');
 const { utils } = ethers
 const Utxo = require('../../src/utxo.js')
 const { buildPoseidon } = require("circomlibjs");
@@ -39,7 +38,7 @@ async function d2oC() {
     delete _feeData.gasPrice
     let _networkName = hre.network.name
     cit =  c.ETHEREUM_CIT
-    let tellor, base, baseToken, charon, chd, cfc, cChainIDs;
+    let  baseToken, charon, chd, cChainIDs;
     tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     if(_networkName == "mumbai"){
         tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
