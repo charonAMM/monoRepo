@@ -176,7 +176,7 @@ console.log("POLCHDPrice",POLCHDPrice)
     _rand = getRandomInt(2)
     if(_networkName == "gnosis"){
         let topBid = await cit.currentTopBid()
-        if(topBid > 0 && await cit.currentTopBid() != myAddress){
+        if(await cit.currentTopBid() != myAddress){
             amt = topBid.add(web3.utils.toWei(".1"))
             if(baseToken.balanceOf(myAddress) > amt){
                 await baseToken.approve(cit.address,amt,_feeData)

@@ -5,7 +5,7 @@ require("@nomiclabs/hardhat-waffle");
 const hre = require("hardhat");
 require("dotenv").config();
 const web3 = require('web3');
-const HASH = require("../build/Hasher.json");
+const HASH = require("../../build/Hasher.json");
 
 //npx hardhat run scripts/deploySystem.js --network polygon
 var fee = web3.utils.toWei(".006");//.6

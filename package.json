@@ -38,6 +38,7 @@
     "hardhat-contract-sizer": "2.0.3",
     "hardhat-gas-reporter": "^1.0.9",
     "incentiveToken": "github:charonAMM/incentiveToken",
+    "registry": "github:charonAMM/registry",
     "usingtellor": "^5.0.0",
     "web3": "^1.7.5"
   }

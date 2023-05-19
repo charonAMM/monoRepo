@@ -38,6 +38,15 @@ const config = {
           },
         },
       },
+        {
+          version: '0.8.19',
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 200,
+            },
+          },
+      },
     ],
     overrides: {
       "charonAMM/contracts/Charon.sol:Charon": {
@@ -120,6 +129,14 @@ const config = {
         urls: {
           apiURL: "https://blockscout.com/xdai/mainnet/api",
           browserURL: "https://blockscout.com/xdai/mainnet"
+        }
+      },
+      {
+        network: "chiado",
+        chainId: 10200,
+        urls: {
+          apiURL: "https://blockscout.com/gnosis/chiado/api",
+          browserURL: "https://blockscout.com/gnosis/chiado"
         }
       }
     ]

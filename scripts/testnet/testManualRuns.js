@@ -374,7 +374,7 @@ console.log("POLCHDPrice",POLCHDPrice)
     if(_swap){
         await baseToken.approve(charon.address,web3.utils.toWei("1"),_feeData)
         await sleep(5000)
-        console.log("approved for swap : ", _adjAmount)
+        console.log("approved for swap : ", web3.utils.toWei("1"))
         await charon.swap(false,web3.utils.toWei("1"),0,web3.utils.toWei("999999"),_feeData)
         await sleep(5000)
         console.log("swap succesfully performed")

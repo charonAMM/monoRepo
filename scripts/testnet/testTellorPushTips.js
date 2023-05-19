@@ -8,15 +8,15 @@ const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
 const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const { abi:abi2, bytecode2 } = require("usingtellor/artifacts/contracts/interface/ITellor.sol/ITellor.json")
-const c = require("./contractAddys.js")
+const c = require("./testAddys.js")
 
-//npx hardhat run scripts/tellorPushTips.js --network chiado
+//npx hardhat run scripts/testnet/testTellorPushTips.js --network chiado
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-
-async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2){ //e.g. chi, sep, t on chi
+let submits = 0;
+async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2,_index){ //e.g. chi, sep, t on chi
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
@@ -39,25 +39,36 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2
     console.log("ts", toSubmit)
     for(i=0;i<toSubmit.length;i++){
         _query = await getTellorData(_tellor,_charon2.address,_chain2,toSubmit[i]);
+        _value = await _charon2.getOracleSubmission(toSubmit[i]);
+        _ts = await hre.ethers.provider.getBlock()
+        _value = abiCoder.encode(['bytes', 'uint256'],[abiCoder.encode(['bytes'],[_value]),_ts.timestamp]);
         if(_query.nonce > 0){
             //check if 12 hours old
             _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
             //if yes do oracle deposit
             if(Date.now()/1000 - _ts > 86400/2){
                 _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                await chiadoCharon.oracleDeposit([0],_encoded,_feeData);
+                await _charon1.oracleDeposit(_index,_encoded,_feeData);
                 await sleep(5000)
                 console.log("oracleDeposit for id :", toSubmit[i],  " chainID", _chain2)
             }else{
                 console.log("need more time for Id: ",toSubmit[i])
             }
         }else{
-                await _trb.approve(_autopay.address,ethers.utils.parseUnits('1', "ether"),_feeData)
+            if(submits == 0){
+                //_tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
+                await sleep(5000)
+                console.log("submitting for id :", toSubmit[i])
+                submits = 1
+            }
+            else{
+                await _trb.approve(_autopay.address,ethers.utils.parseUnits('.1', "ether"),_feeData)
                 console.log("submitting approve")
                 await sleep(5000)
-                _tx - await _autopay.tip(_query.queryId,ethers.utils.parseUnits('1', "ether"),_query.queryData,_feeData)
+                _tx - await _autopay.tip(_query.queryId,ethers.utils.parseUnits('.1', "ether"),_query.queryData,_feeData)
                 await sleep(5000)
                 console.log("submitting tip for id :", toSubmit[i], " chainID", _chain2)
+            }
         }
     }
 }
@@ -109,18 +120,21 @@ async function tellorPush() {
 
 
     if(_networkName == "chiado"){
-        await tellorSubmits(chiadoCharon,sepCharon,tellor, trb,autopay,sepChain);
-        await tellorSubmits(chiadoCharon,mumbaiCharon,tellor, trb,autopay, mumChain);
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON)
+        await tellorSubmits(charon,sepCharon,tellor, trb,autopay,sepChain,0);
+        await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,1);
         console.log("tellorPush finished on chiado")
     }
     else if(_networkName == "sepolia"){
-        await tellorSubmits(sepCharon,chiadoCharon,tellor, trb,autopay, chiChain);
-        await tellorSubmits(sepCharon,mumbaiCharon,tellor, trb,autopay, mumChain);
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON)
+        await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
+        await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,0);
         console.log("tellorPush finished on sepolia")
     }
     else if(_networkName == "mumbai"){
-        await tellorSubmits(mumbaiCharon,sepCharon,tellor, trb,autopay, sepChain);
-        await tellorSubmits(mumbaiCharon,chiadoCharon,tellor, trb,autopay, chiChain);
+        charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON)
+        await tellorSubmits(charon,sepCharon,tellor, trb,autopay, sepChain,0);
+        await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
         console.log("tellorPush finished on mumbai")
     }
 }
@@ -128,17 +142,18 @@ async function tellorPush() {
 async function getTellorData(tInstance,cAddress,chain,depositID){
     let ABI = ["function getOracleSubmission(uint256 _depositId)"];
     let iface = new ethers.utils.Interface(ABI);
-    let funcSelector = iface.encodeFunctionData("getOracleSubmission", [depositID])
+    let funcSelector = iface.encodeFunctionData("getOracleSubmission", [5])
 
     queryData = abiCoder.encode(
         ['string', 'bytes'],
         ['EVMCall', abiCoder.encode(
             ['uint256','address','bytes'],
-            [chain,cAddress,funcSelector]
+            [10200,chiadoCharon.address,funcSelector]
         )]
         );
         queryId = h.hash(queryData)
         nonce = await tInstance.getNewValueCountbyQueryId(queryId)
+        console.log("chiado id", queryId)
         return({queryData: queryData,queryId: queryId,nonce: nonce})
   }
 
