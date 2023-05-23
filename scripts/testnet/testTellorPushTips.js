@@ -142,21 +142,19 @@ async function tellorPush() {
 async function getTellorData(tInstance,cAddress,chain,depositID){
     let ABI = ["function getOracleSubmission(uint256 _depositId)"];
     let iface = new ethers.utils.Interface(ABI);
-    let funcSelector = iface.encodeFunctionData("getOracleSubmission", [5])
+    let funcSelector = iface.encodeFunctionData("getOracleSubmission", [depositID])
 
     queryData = abiCoder.encode(
         ['string', 'bytes'],
         ['EVMCall', abiCoder.encode(
             ['uint256','address','bytes'],
-            [10200,chiadoCharon.address,funcSelector]
+            [chain,cAddress,funcSelector]
         )]
         );
         queryId = h.hash(queryData)
         nonce = await tInstance.getNewValueCountbyQueryId(queryId)
-        console.log("chiado id", queryId)
         return({queryData: queryData,queryId: queryId,nonce: nonce})
   }
-
 tellorPush()
     .then(() => process.exit(0))
     .catch(error => {

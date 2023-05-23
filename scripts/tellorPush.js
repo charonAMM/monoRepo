@@ -6,9 +6,11 @@ const hre = require("hardhat");
 const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
 const { abi } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
+const { abi:abi2, bytecode2 } = require("usingtellor/artifacts/contracts/interface/ITellor.sol/ITellor.json")
 const c = require("./contractAddys.js");
 const { ethers } = require("hardhat");
 const abiCoder = new ethers.utils.AbiCoder()
+let myAddress = process.env.MAINNETKEY
 
 //npx hardhat run scripts/tellorPush.js --network gnosis
 
@@ -20,6 +22,9 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb,
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
+    if(hre.network.name == "polygon"){
+        _feeData = {"gasPrice":150000000000}
+    }
     console.log("using fee Data: ", _feeData)
     toSubmit = []
     inputIds = []

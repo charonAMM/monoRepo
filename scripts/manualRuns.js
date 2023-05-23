@@ -176,11 +176,12 @@ console.log("POLCHDPrice",POLCHDPrice)
     _rand = getRandomInt(2)
     if(_networkName == "gnosis"){
         let topBid = await cit.currentTopBid()
-        if(await cit.currentTopBid() != myAddress){
+        if(await cit.topBidder() != myAddress){
             amt = topBid.add(web3.utils.toWei(".1"))
             if(baseToken.balanceOf(myAddress) > amt){
                 await baseToken.approve(cit.address,amt,_feeData)
                 await cit.bid(amt,_feeData)
+                await sleep(5000)
                 console.log("bid successful")
             }else{
                 console.log("don't have enought to be top bid")
@@ -189,6 +190,7 @@ console.log("POLCHDPrice",POLCHDPrice)
         const now = Date.now();
         if(await cit.endDate()* 1000 - now < 0){
             await cit.startNewAuction();
+            await sleep(5000)
             console.log("new auction started")
         }else(
             console.log("new auction not started")
