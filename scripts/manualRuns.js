@@ -107,9 +107,11 @@ async function runChecks() {
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
 let ETHCHDPrice = ethers.utils.formatEther(await sepCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
+let midCHDPrice = (GNOCHDPrice + ETHCHDPrice + POLCHDPrice) / 3
 console.log("GnosisCHDPrice", GNOCHDPrice)
 console.log("ETHCHDPrice",ETHCHDPrice)
 console.log("POLCHDPrice",POLCHDPrice)
+console.log("midPrice", midCHDPrice);
 
     let _networkName = hre.network.name
     cit =  c.CIT
@@ -119,7 +121,7 @@ console.log("POLCHDPrice",POLCHDPrice)
     delete _feeData.gasPrice
     tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     if(_networkName == "polygon"){
-        _feeData = {"gasPrice":139000000000}
+        _feeData = {"gasPrice":160000000000}
         base = "https://polygonscan.com/address/"
         baseToken =  c.POLYGON_BASETOKEN
         charon =  c.POLYGON_CHARON
@@ -173,28 +175,17 @@ console.log("POLCHDPrice",POLCHDPrice)
     _chdSwap = false
     _withdraw = false
     _withdrawCHD = false
+    _arbSwap = false
+    _arbSwap2 = false
+    let _10Dollars
     _rand = getRandomInt(2)
-    if(_networkName == "gnosis"){
-        let topBid = await cit.currentTopBid()
-        if(await cit.topBidder() != myAddress){
-            amt = topBid.add(web3.utils.toWei(".1"))
-            if(baseToken.balanceOf(myAddress) > amt){
-                await baseToken.approve(cit.address,amt,_feeData)
-                await cit.bid(amt,_feeData)
-                await sleep(5000)
-                console.log("bid successful")
-            }else{
-                console.log("don't have enought to be top bid")
-            }
-        } 
-        const now = Date.now();
-        if(await cit.endDate()* 1000 - now < 0){
-            await cit.startNewAuction();
-            await sleep(5000)
-            console.log("new auction started")
-        }else(
-            console.log("new auction not started")
-        )
+    if(_networkName == "optimism"){
+        _10Dollars = 10 / ethPrice
+        if(ETHCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (ETHCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -229,7 +220,13 @@ console.log("POLCHDPrice",POLCHDPrice)
                 _lpCHD = true
             }
         }
-    }else if(_networkName == "mumbai"){
+    }else if(_networkName == "polygon"){
+        _10Dollars = 10 / maticPrice
+        if(POLCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (POLCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(POLCHDPrice > ETHCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -264,7 +261,36 @@ console.log("POLCHDPrice",POLCHDPrice)
                 _lpCHD = true
             }
         }
-    }else if(_networkName == "chiado"){
+    }else if(_networkName == "gnosis"){
+        _10Dollars = 10 / xDaiPrice
+        let topBid = await cit.currentTopBid()
+        const now = Date.now();
+        if(await cit.endDate()* 1000 - now < 0){
+            await cit.estimateGas.startNewAuction();
+            await cit.startNewAuction();
+            await sleep(5000)
+            console.log("new auction started")
+        }else(
+            console.log("new auction not started")
+        )
+        if(await cit.topBidder() != myAddress){
+            amt = topBid.add(web3.utils.toWei(".1"))
+            if(baseToken.balanceOf(myAddress) > amt){
+                await baseToken.estimateGas.approve(cit.address,amt,_feeData);//will error out if throw
+                await baseToken.approve(cit.address,amt,_feeData)
+                await cit.estimateGas.bid(amt,_feeData)
+                await cit.bid(amt,_feeData)
+                await sleep(5000)
+                console.log("bid successful")
+            }else{
+                console.log("don't have enought to be top bid")
+            }
+        } 
+        if(GNOCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (GNOCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(GNOCHDPrice > ETHCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -301,6 +327,29 @@ console.log("POLCHDPrice",POLCHDPrice)
             }
         }
     }
+    _10Dollars = await web3.utils.toWei(String(_10Dollars), 'ether')
+    if(_arbSwap){
+        await chd.estimateGas.approve(charon.address,_10Dollars,_feeData)
+        await chd.approve(charon.address,_10Dollars,_feeData)
+        await sleep(5000)
+        console.log("approved for swap : ", web3.utils.fromWei(_10Dollars))
+        await charon.estimateGas.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+        await charon.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+        await sleep(5000)
+        console.log("swap succesfully performed")
+        console.log("sold CHD, arb swap performed")
+    }
+    if(_arbSwap2){
+        await baseToken.estimateGas.approve(charon.address,_10Dollars,_feeData)
+        await baseToken.approve(charon.address,_10Dollars,_feeData)
+        await sleep(5000)
+        console.log("approved for swap : ", web3.utils.fromWei(_10Dollars))
+        await charon.estimateGas.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+        await charon.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+        await sleep(5000)
+        console.log("swap succesfully performed")
+        console.log("bought CHD, arb swap2 performed")
+    }
     if(_deposit){
         let charon2 = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", cAddys[0])
         let _depositAmount = utils.parseEther('10');
@@ -312,8 +361,9 @@ console.log("POLCHDPrice",POLCHDPrice)
             fee)
 
         if(await baseToken.balanceOf(myAddress) > _Camount){
+            await baseToken.estimateGas.approve(charon.address,_Camount,_feeData)
             await baseToken.approve(charon.address,_Camount,_feeData)
-            await sleep(5000)
+            await sleep(6000)
             console.log("tokens approved")
             let myKey = await new Keypair({privkey:process.env.PK, myHashFunc:poseidon})
             let aliceDepositUtxo = new Utxo({ amount: _depositAmount,keypair:myKey, myHashFunc: poseidon, chainID:cChainIDs[0] })
@@ -331,6 +381,7 @@ console.log("POLCHDPrice",POLCHDPrice)
             })
             let args = inputData.args
             let extData = inputData.extData
+            await charon.estimateGas.depositToOtherChain(args,extData,false,_Camount,_feeData);
             await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
             await sleep(5000)
             console.log("deposited to other chain succesfully ")
@@ -346,6 +397,7 @@ console.log("POLCHDPrice",POLCHDPrice)
                                                 _depositAmount,
                                                 fee)
         if(await baseToken.balanceOf(myAddress) > _Camount){
+            await baseToken.estimateGas.approve(charon.address,_Camount,_feeData)
             await baseToken.approve(charon.address,_Camount,_feeData)
             await sleep(5000)
             console.log("tokens approved")
@@ -365,6 +417,7 @@ console.log("POLCHDPrice",POLCHDPrice)
             })
             let args = inputData.args
             let extData = inputData.extData
+            await charon.estimateGas.depositToOtherChain(args,extData,false,_Camount,_feeData);
             await charon.depositToOtherChain(args,extData,false,_Camount,_feeData);
             await sleep(5000)
             console.log("deposited to other chain succesfully2 ")
@@ -376,6 +429,7 @@ console.log("POLCHDPrice",POLCHDPrice)
             await baseToken.approve(charon.address,_Camount,_feeData)
             await sleep(5000)
             console.log("approved for swap : ", _Camount)
+            await charon.estimateGas.swap(false,_Camount,0,web3.utils.toWei("999999"),_feeData)
             await charon.swap(false,_Camount,0,web3.utils.toWei("999999"),_feeData)
             await sleep(5000)
             console.log("swap succesfully performed")

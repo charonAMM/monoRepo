@@ -11,13 +11,14 @@ const c = require("./contractAddys.js");
 const { ethers } = require("hardhat");
 const abiCoder = new ethers.utils.AbiCoder()
 let myAddress = process.env.MAINNETKEY
-
+let byPassList = [9]
 //npx hardhat run scripts/tellorPush.js --network gnosis
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 let submits = 0;
+let failures = 0
 async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb, _autopay, _tip){ //e.g. chi, sep, t on chi
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
@@ -37,7 +38,7 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb,
         inputIds.push(thisId);
     }
     for(i = 0; i< events.length; i++){
-        if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
+        if(inputIds.indexOf(events[i].args._depositId * 1) == -1 && byPassList.indexOf(events[i].args._depositId * 1) == -1){
                 toSubmit.push(events[i].args._depositId)
         }
     }
@@ -53,28 +54,49 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb,
             //if yes do oracle deposit
             if(Date.now()/1000 - _ts > 86400/2){
                 _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                await _charon1.oracleDeposit(_index,_encoded,_feeData);
+                try{
+                    await _charon1.estimateGas.oracleDeposit(_index,_encoded,_feeData);
+                    await _charon1.oracleDeposit(_index,_encoded,_feeData);
+                }
+                catch{
+                    console.log("failed at oracleDeposit, ID", toSubmit[i], " chainID", _chain2)
+                    failures += 1
+                }
                 await sleep(5000)
-                console.log("oracleDeposit for id :", toSubmit[i])
+                console.log("oracleDeposit for id :", toSubmit[i], " chainID", _chain2)
             }else{
-                console.log("need more time for Id: ",toSubmit[i])
+                console.log("need more time for Id: ",toSubmit[i], " chainID", _chain2)
             }
         }else{
             if(submits == 0){
-                _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
+                try{
+                    _tx = await _tellor.estimateGas.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
+                    _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
+                }
+                catch{
+                    console.log("failed at submit Value")
+                    failures += 1
+                }
                 await sleep(5000)
-                console.log("submitting for id :", toSubmit[i])
+                console.log("submitting for id :", toSubmit[i], " chainID", _chain2)
                 submits = 1
             }
             else{
                 console.log("reporter in lock for ID: ", toSubmit[i])
                 if(_trb.balanceOf(myAddress) > _tip){
-                    await _trb.approve(_autopay.address,_tip,_feeData)
-                    console.log("submitting approve")
-                    await sleep(5000)
-                    _tx - await _autopay.tip(_query.queryId,_tip,_query.queryData,_feeData)
-                    await sleep(5000)
-                    console.log("submitting tip for id :", toSubmit[i], " chainID", _chain2)
+                    try{
+                            await _trb.estimateGas.approve(_autopay.address,_tip,_feeData)
+                            await _trb.approve(_autopay.address,_tip,_feeData)
+                            console.log("submitting approve")
+                            await sleep(5000)
+                            await _autopay.estimateGas.tip(_query.queryId,_tip,_query.queryData,_feeData)
+                            _tx = await _autopay.tip(_query.queryId,_tip,_query.queryData,_feeData)
+                            await sleep(5000)
+                            console.log("submitting tip for id :", toSubmit[i], " chainID", _chain2)
+                        }catch{
+                        console.log("failed at tip", toSubmit[i], " chainID", _chain2)
+                        failures += 1
+                    }
                 }else{
                     console.log("need more TRB to tip!!")
                 }
@@ -139,6 +161,9 @@ async function tellorPush() {
         await tellorSubmits(charon,sepCharon,tellor, ethChain,0,trb, autopay, ethers.utils.parseEther(".1"));
         await tellorSubmits(charon,chiadoCharon,tellor, gnoChain,1,trb, autopay, ethers.utils.parseEther(".1"));
         console.log("tellorPush finished on polygon")
+    }
+    if(failures > 1){
+        console.log("multiple failures... be sure to check gas")
     }
 }
 

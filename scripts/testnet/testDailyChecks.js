@@ -96,16 +96,16 @@ async function runChecks() {
     let sNode = process.env.NODE_URL_SEPOLIA;
     let polNode = process.env.NODE_URL_MUMBAI;
     let chiNode = process.env.NODE_URL_CHIADO;
-    let provider = new ethers.providers.JsonRpcProvider(sNode);
-    let wallet = new ethers.Wallet(process.env.PK, provider);
+    let oprovider = new ethers.providers.JsonRpcProvider(sNode);
+    let wallet = new ethers.Wallet(process.env.PK, oprovider);
     let sepSigner = wallet.provider.getSigner(wallet.address)
     sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, sepSigner)
-    provider = new ethers.providers.JsonRpcProvider(chiNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
+    let gprovider = new ethers.providers.JsonRpcProvider(chiNode);
+    wallet = new ethers.Wallet(process.env.PK, gprovider);
     let chiSigner = wallet.provider.getSigner(wallet.address)
     chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON, chiSigner)
-    provider = new ethers.providers.JsonRpcProvider(polNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
+    pprovider = new ethers.providers.JsonRpcProvider(polNode);
+    wallet = new ethers.Wallet(process.env.PK, pprovider);
     let mumSigner = wallet.provider.getSigner(wallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
     console.log("running daily checks")
@@ -118,35 +118,39 @@ let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
 
-console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await sepoliaCharon.balanceOf(myAddress)))
-console.log( "my balance POLYGON pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))
-console.log( "my balance GNOSIS pool tokens: ", ethers.utils.formatEther(await chiadoCharon.balanceOf(myAddress)))
+console.log("Sepolia GAS ", ethPrice * ethers.utils.formatEther(await oprovider.getBalance(myAddress)))
+console.log("Mumbai GAS ", maticPrice * ethers.utils.formatEther(await pprovider.getBalance(myAddress)))
+console.log("Chiado GAS ", xDaiPrice * ethers.utils.formatEther(await gprovider.getBalance(myAddress)))
 
-console.log( "my balance ETHEREUM CHD tokens: ", ethers.utils.formatEther(await ethChd.balanceOf(myAddress)))
-console.log( "my balance POLYGON CHD tokens: ", ethers.utils.formatEther(await mumChd.balanceOf(myAddress)))
-console.log( "my balance GNOSIS CHD tokens: ", ethers.utils.formatEther(await chiChd.balanceOf(myAddress)))
+console.log( "my balance SEPOLIA pool tokens: ", ethers.utils.formatEther(await sepoliaCharon.balanceOf(myAddress)))
+console.log( "my balance MUMBAI pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))
+console.log( "my balance CHIADO pool tokens: ", ethers.utils.formatEther(await chiadoCharon.balanceOf(myAddress)))
+
+console.log( "my balance SEPOLIA CHD tokens: ", ethers.utils.formatEther(await ethChd.balanceOf(myAddress)))
+console.log( "my balance MUMBAI CHD tokens: ", ethers.utils.formatEther(await mumChd.balanceOf(myAddress)))
+console.log( "my balance CHIADO CHD tokens: ", ethers.utils.formatEther(await chiChd.balanceOf(myAddress)))
 
 let myKeypair = new Keypair({privkey:process.env.PK, myHashFunc: poseidon});
-console.log("my private balance ETHEREUM CHD", await getPrivateBalance(sepoliaCharon,myKeypair,5))
-console.log("my private balance GNOSIS CHD", await getPrivateBalance(chiadoCharon,myKeypair,10200))
-console.log("my private balance POLYGON CHD", await getPrivateBalance(mumbaiCharon,myKeypair,80001))
+console.log("my private balance SEPOLIA CHD", await getPrivateBalance(sepoliaCharon,myKeypair,5))
+console.log("my private balance CHIADO CHD", await getPrivateBalance(chiadoCharon,myKeypair,10200))
+console.log("my private balance MUMBAI CHD", await getPrivateBalance(mumbaiCharon,myKeypair,80001))
 
 // console.log("my CIT balance")
 
-console.log("ETHEREUM")
+console.log("SEPOLIA")
 console.log("RecordBalance: ",ethers.utils.formatEther(await sepoliaCharon.recordBalance()))
 console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await sepoliaCharon.recordBalanceSynth()))
 console.log("Total Supply: ",ethers.utils.formatEther(await sepoliaCharon.totalSupply()))
 console.log("CHD Total Supply", ethers.utils.formatEther(await ethChd.totalSupply()))
 console.log("CIT TotalSupply ", ethers.utils.formatEther(await cit.totalSupply()))
 
-console.log("GNOSIS")
+console.log("CHIADO")
 console.log("RecordBalance: ",ethers.utils.formatEther(await chiadoCharon.recordBalance()))
 console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await chiadoCharon.recordBalanceSynth()))
 console.log("Total Supply: ",ethers.utils.formatEther(await chiadoCharon.totalSupply()))
 console.log("CHD Total Supply", ethers.utils.formatEther(await chiChd.totalSupply()))
 
-console.log("POLYGON")
+console.log("MUMBAI")
 console.log("RecordBalance: ",ethers.utils.formatEther(await mumbaiCharon.recordBalance()))
 console.log("RecordBalanceSynth: ",ethers.utils.formatEther(await mumbaiCharon.recordBalanceSynth()))
 console.log("Total Supply: ",ethers.utils.formatEther(await mumbaiCharon.totalSupply()))
@@ -157,9 +161,9 @@ let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / 
 let ETHCHDPrice = ethers.utils.formatEther(await sepoliaCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
 
-console.log("Gnosis CHD Price : ", GNOCHDPrice)
-console.log("Ethereum CHD Price : ", ETHCHDPrice)
-console.log("Polygon CHD Price : ", POLCHDPrice)
+console.log("CHIADO CHD Price : ", GNOCHDPrice)
+console.log("SEPOLIA CHD Price : ", ETHCHDPrice)
+console.log("MUMBAI CHD Price : ", POLCHDPrice)
 
 console.log("Auction info")
 console.log("top bid :", ethers.utils.formatEther(await cit.currentTopBid()))

@@ -96,16 +96,16 @@ async function runChecks() {
     let sNode = process.env.NODE_URL_OPTIMISM;
     let polNode = process.env.NODE_URL_POLYGON;
     let chiNode = process.env.NODE_URL_GNOSIS;
-    let provider = new ethers.providers.JsonRpcProvider(sNode);
-    let wallet = new ethers.Wallet(process.env.MAINPK, provider);
+    let oprovider = new ethers.providers.JsonRpcProvider(sNode);
+    let wallet = new ethers.Wallet(process.env.MAINPK, oprovider);
     let sepSigner = wallet.provider.getSigner(wallet.address)
     sepoliaCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON, sepSigner)
-    provider = new ethers.providers.JsonRpcProvider(chiNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
+    let gprovider = new ethers.providers.JsonRpcProvider(chiNode);
+    wallet = new ethers.Wallet(process.env.PK, gprovider);
     let chiSigner = wallet.provider.getSigner(wallet.address)
     chiadoCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON, chiSigner)
-    provider = new ethers.providers.JsonRpcProvider(polNode);
-    wallet = new ethers.Wallet(process.env.PK, provider);
+    let pprovider = new ethers.providers.JsonRpcProvider(polNode);
+    wallet = new ethers.Wallet(process.env.PK, pprovider);
     let mumSigner = wallet.provider.getSigner(wallet.address)
     mumbaiCharon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON,mumSigner)
     console.log("running daily checks")
@@ -116,6 +116,10 @@ let mumCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC",
 let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_CHD, sepSigner)
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
+
+console.log("Optimism GAS ", ethPrice * ethers.utils.formatEther(await oprovider.getBalance(myAddress)))
+console.log("Polygon GAS ", maticPrice * ethers.utils.formatEther(await pprovider.getBalance(myAddress)))
+console.log("Gnosis GAS ", xDaiPrice * ethers.utils.formatEther(await gprovider.getBalance(myAddress)))
 
 console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await sepoliaCharon.balanceOf(myAddress)))
 console.log( "my balance POLYGON pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))

@@ -13,7 +13,7 @@ const { buildPoseidon } = require("circomlibjs");
 const { BigNumber } = require("ethers")
 const { prepareTransaction } = require('../../src/index');
 const { Keypair } = require("../../src/keypair");
-//npx hardhat run scripts/manualRuns.js --network mumbai
+//npx hardhat run scripts/testnet/testManualRuns.js --network mumbai
 let cit,builtPoseidon;
 var fee = web3.utils.toWei(".006");//.6
 var myAddress = process.env.PUBLICKEY
@@ -109,9 +109,11 @@ async function runChecks() {
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
 let ETHCHDPrice = ethers.utils.formatEther(await sepCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
+let midCHDPrice = (GNOCHDPrice + ETHCHDPrice + POLCHDPrice) / 3
 console.log("GnosisCHDPrice", GNOCHDPrice)
 console.log("ETHCHDPrice",ETHCHDPrice)
 console.log("POLCHDPrice",POLCHDPrice)
+console.log("midPrice", midCHDPrice);
 
     let _networkName = hre.network.name
     cit =  c.CIT
@@ -178,6 +180,8 @@ console.log("POLCHDPrice",POLCHDPrice)
     _chdSwap = false
     _withdraw = false
     _withdrawCHD = false
+    _arbSwap = false
+    _arbSwap2 = false
     _rand = getRandomInt(2)
     if(_networkName == "sepolia"){
         let topBid = await cit.currentTopBid()
@@ -193,6 +197,11 @@ console.log("POLCHDPrice",POLCHDPrice)
         }else(
             console.log("new auction not started")
         )
+        if(ETHCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (ETHCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -228,6 +237,11 @@ console.log("POLCHDPrice",POLCHDPrice)
             }
         }
     }else if(_networkName == "mumbai"){
+        if(POLCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (POLCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(POLCHDPrice > ETHCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -263,6 +277,11 @@ console.log("POLCHDPrice",POLCHDPrice)
             }
         }
     }else if(_networkName == "chiado"){
+        if(GNOCHDPrice > midCHDPrice * 1.05){
+            _arbSwap = true
+        }else if (GNOCHDPrice < midCHDPrice * .95){
+            _arbSwap2 = true
+        }
         if(GNOCHDPrice > ETHCHDPrice){
             if (_rand == 1){
                 _swap = true
@@ -299,6 +318,24 @@ console.log("POLCHDPrice",POLCHDPrice)
             }
         }
     }
+    if(_arbSwap){
+        await chd.approve(charon.address,web3.utils.toWei("10"),_feeData)
+        await sleep(5000)
+        console.log("approved for swap : ", web3.utils.toWei("10"))
+        await charon.swap(true,web3.utils.toWei("10"),0,web3.utils.toWei("999999"),_feeData)
+        await sleep(5000)
+        console.log("swap succesfully performed")
+        console.log("sold CHD, arb swap performed")
+    }
+    if(_arbSwap2){
+        await baseToken.approve(charon.address,web3.utils.toWei("10"),_feeData)
+        await sleep(5000)
+        console.log("approved for swap : ", web3.utils.toWei("10"))
+        await charon.swap(false,web3.utils.toWei("10"),0,web3.utils.toWei("999999"),_feeData)
+        await sleep(5000)
+        console.log("swap succesfully performed")
+        console.log("bought CHD, arb swap2 performed")
+    }
     if(_deposit){
         let charon2 = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", cAddys[0])
         let _depositAmount = utils.parseEther('10');
@@ -311,7 +348,7 @@ console.log("POLCHDPrice",POLCHDPrice)
                                                 recSynthBal,
                                                 _depositAmount,
                                                 fee)
-    
+        await sleep(5000)
         await baseToken.approve(charon.address,_Camount,_feeData)
         await sleep(5000)
         console.log("tokens approved")

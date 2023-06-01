@@ -8,75 +8,39 @@ const h = require("usingtellor/test/helpers/helpers.js");
 require("dotenv").config();
 const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 const { abi:abi2, bytecode2 } = require("usingtellor/artifacts/contracts/interface/ITellor.sol/ITellor.json")
-const c = require("./testAddys.js")
-let myAddress = process.env.PUBLICKEY
+const c = require("../testnet/testAddys.js")
 
-//npx hardhat run scripts/testnet/testTellorPushTips.js --network chiado
+
+let depositID = 9
+let isTip = true
+let altChain = "sepolia"
+
+//npx hardhat run scripts/ifuncs/testTellorPush.js --network chiado
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-let submits = 0;
 async function tellorSubmits(_charon1, _charon2, _tellor, _trb, _autopay,_chain2,_index){ //e.g. chi, sep, t on chi
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
-    toSubmit = []
-    inputIds = []
-    let filter = _charon2.filters.DepositToOtherChain()
-    let events = await _charon2.queryFilter(filter, startTime , "latest")
-    filter = _charon1.filters.OracleDeposit()
-    let  oracleEvents = await _charon1.queryFilter(filter, startTime , "latest")
-    for(i = 0; i< oracleEvents.length; i++){
-        thisId = parseInt(oracleEvents[i].args._inputData);
-        inputIds.push(thisId);
+    _query = await getTellorData(_tellor,_charon2.address,_chain2,depositID);
+    _value = await _charon2.getOracleSubmission(depositID);
+    _ts = await hre.ethers.provider.getBlock()
+    _value = abiCoder.encode(['bytes', 'uint256'],[abiCoder.encode(['bytes'],[_value]),_ts.timestamp]);
+    if(!isTip){
+        await _tellor.estimateGas.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);//will fail if throw
+        _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
+        await sleep(5000)
+        console.log("submitting for id :", depositID)
     }
-    for(i = 0; i< events.length; i++){
-        if(inputIds.indexOf(events[i].args._depositId * 1) == -1){
-                toSubmit.push(events[i].args._depositId)
-        }
-    }
-    let _query, _tx, _ts;
-    console.log("ts", toSubmit)
-    for(i=0;i<toSubmit.length;i++){
-        _query = await getTellorData(_tellor,_charon2.address,_chain2,toSubmit[i]);
-        _value = await _charon2.getOracleSubmission(toSubmit[i]);
-        _ts = await hre.ethers.provider.getBlock()
-        _value = abiCoder.encode(['bytes', 'uint256'],[abiCoder.encode(['bytes'],[_value]),_ts.timestamp]);
-        if(_query.nonce > 0){
-            //check if 12 hours old
-            _ts = await _tellor.getTimestampbyQueryIdandIndex(_query.queryId,0)
-            //if yes do oracle deposit
-            if(Date.now()/1000 - _ts > 86400/2){
-                _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
-                await _charon1.oracleDeposit(_index,_encoded,_feeData);
-                await sleep(5000)
-                console.log("oracleDeposit for id :", toSubmit[i],  " chainID", _chain2)
-            }else{
-                console.log("need more time for Id: ",toSubmit[i])
-            }
-        }else{
-            if(submits == 0){
-                _tx = await _tellor.submitValue(_query.queryId, _value,0, _query.queryData,_feeData);
-                await sleep(5000)
-                console.log("submitting for id :", toSubmit[i], " chainID", _chain2)
-                submits = 1
-            }
-            else{
-                if(await _trb.balanceOf(myAddress) > ethers.utils.parseUnits('.1', "ether")){
-                    await _trb.approve(_autopay.address,ethers.utils.parseUnits('.1', "ether"),_feeData)
-                    console.log("submitting approve")
-                    await sleep(5000)
-                    _tx - await _autopay.tip(_query.queryId,ethers.utils.parseUnits('.1', "ether"),_query.queryData,_feeData)
-                    await sleep(5000)
-                    console.log("submitting tip for id :", toSubmit[i], " chainID", _chain2)
-                }
-                else{
-                    console.log("need more TRB at address: ",myAddress )
-                }
-
-            }
-        }
+    else{
+        await _trb.approve(_autopay.address,ethers.utils.parseUnits('.1', "ether"),_feeData)
+        console.log("submitting approve")
+        await sleep(5000)
+        _tx = await _autopay.tip(_query.queryId,ethers.utils.parseUnits('.1', "ether"),_query.queryData,_feeData)
+        await sleep(5000)
+        console.log("submitting tip for id :", depositID, " chainID", _chain2)
     }
 }
 
@@ -128,21 +92,39 @@ async function tellorPush() {
 
     if(_networkName == "chiado"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.GNOSIS_CHARON)
-        await tellorSubmits(charon,sepCharon,tellor, trb,autopay,sepChain,0);
-        await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,1);
-        console.log("tellorPush finished on chiado")
+        if(altChain == "sepolia"){
+            await tellorSubmits(charon,sepCharon,tellor, trb,autopay,sepChain,0);
+        }
+        else if( altChain == "mumbai"){
+            await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,1);
+        }
+        else{
+            console.log("wrong chains speicfied")
+        }
     }
     else if(_networkName == "sepolia"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.ETHEREUM_CHARON)
-        await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
-        await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,0);
-        console.log("tellorPush finished on sepolia")
+        if(altChain == "chiado"){
+            await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
+        }
+        else if(altChain == "mumbai"){
+            await tellorSubmits(charon,mumbaiCharon,tellor, trb,autopay, mumChain,0);
+        }
+        else{
+            console.log("wrong chains speicfied")
+        }
     }
     else if(_networkName == "mumbai"){
         charon = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", c.POLYGON_CHARON)
-        await tellorSubmits(charon,sepCharon,tellor, trb,autopay, sepChain,0);
-        await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
-        console.log("tellorPush finished on mumbai")
+        if(altChain == "sepolia"){
+            await tellorSubmits(charon,sepCharon,tellor, trb,autopay, sepChain,0);
+        }
+        else if(altChain == "chiado"){
+            await tellorSubmits(charon,chiadoCharon,tellor, trb,autopay, chiChain,1);
+        }
+        else{
+            console.log("wrong chains speicfied")
+        }
     }
 }
 
