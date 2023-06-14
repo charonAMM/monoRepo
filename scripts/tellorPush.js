@@ -24,7 +24,17 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb,
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
     if(hre.network.name == "polygon"){
-        _feeData = {"gasPrice":150000000000}
+        _feeData = {"gasPrice":200000000000}
+        const key = process.env.OWLKEY; // fill your api key here
+        const res = await fetch(`https://api.owlracle.info/v4/poly/gas?apikey=${ key }`);
+        const data = await res.json();
+        console.log(data.speeds[1].maxFeePerGas)
+        if(data.avgGas > 10){
+            _feeData = {"gasPrice": Math.floor(1000000000 * data.speeds[1].maxFeePerGas)}
+            console.log("Polygon gas price", Math.floor(1000000000 * data.speeds[1].maxFeePerGas));
+        }else{
+            console.log("using manual gas price")
+        }
     }
     console.log("using fee Data: ", _feeData)
     toSubmit = []

@@ -6,11 +6,12 @@ const hre = require("hardhat");
 require("dotenv").config();
 const c = require("./contractAddys.js")
 const web3 = require('web3');
-const { utils } = ethers
 const Utxo = require('../src/utxo')
 const { buildPoseidon } = require("circomlibjs");
 const { prepareTransaction } = require('../src/index');
 const { Keypair } = require("../src/keypair");
+const { ethers } = require("hardhat");
+const { utils } = ethers
 //npx hardhat run scripts/manualRuns.js --network gnosis
 let cit,builtPoseidon;
 var fee = web3.utils.toWei(".006");//.6
@@ -122,6 +123,20 @@ console.log("midPrice", midCHDPrice);
     tellor = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     if(_networkName == "polygon"){
         _feeData = {"gasPrice":160000000000}
+        try{
+            const key = process.env.OWLKEY; // fill your api key here
+            const res = await fetch(`https://api.owlracle.info/v4/poly/gas?apikey=${ key }`);
+            const data = await res.json();
+            if(data.avgGas > 10){
+                _feeData = {"gasPrice": Math.floor(1000000000 * data.speeds[1].maxFeePerGas)}
+                console.log("Polygon gas price", Math.floor(1000000000 * data.speeds[1].maxFeePerGas));
+            }else{
+                console.log("using manual gas price")
+            }
+        }catch{
+            console.log("error setting polygon gas price")
+        }
+
         base = "https://polygonscan.com/address/"
         baseToken =  c.POLYGON_BASETOKEN
         charon =  c.POLYGON_CHARON
@@ -182,9 +197,9 @@ console.log("midPrice", midCHDPrice);
     if(_networkName == "optimism"){
         _10Dollars = 10 / ethPrice
         if(ETHCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (ETHCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (ETHCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
@@ -223,9 +238,9 @@ console.log("midPrice", midCHDPrice);
     }else if(_networkName == "polygon"){
         _10Dollars = 10 / maticPrice
         if(POLCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (POLCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (POLCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(POLCHDPrice > ETHCHDPrice){
             if (_rand == 1){
@@ -287,9 +302,9 @@ console.log("midPrice", midCHDPrice);
             }
         } 
         if(GNOCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (GNOCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (GNOCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(GNOCHDPrice > ETHCHDPrice){
             if (_rand == 1){
@@ -329,21 +344,32 @@ console.log("midPrice", midCHDPrice);
     }
     _10Dollars = await web3.utils.toWei(String(_10Dollars), 'ether')
     if(_arbSwap){
-        await chd.estimateGas.approve(charon.address,_10Dollars,_feeData)
-        await chd.approve(charon.address,_10Dollars,_feeData)
-        await sleep(5000)
-        console.log("approved for swap : ", web3.utils.fromWei(_10Dollars))
-        await charon.estimateGas.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
-        await charon.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
-        await sleep(5000)
-        console.log("swap succesfully performed")
-        console.log("sold CHD, arb swap performed")
+        if(await chd.allowance(myAddress, charon.address) < _10Dollars){
+            await chd.estimateGas.approve(charon.address,_10Dollars,_feeData)
+            await chd.approve(charon.address,_10Dollars,_feeData)
+            await sleep(5000)
+            console.log("approved for chd to Base swap : ", web3.utils.fromWei(_10Dollars))
+        }
+        if(ethers.utils.formatEther(await chd.balanceOf(myAddress)) - ethers.utils.formatEther(_10Dollars) < 0){
+            _10Dollars = await chd.balanceOf(myAddress)
+            console.log("WARNING!! NEED MORE CHD")
+        }
+        if(ethers.utils.formatEther(_10Dollars) > 1){
+            await charon.estimateGas.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+            await charon.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+            await sleep(5000)
+            console.log("swap succesfully performed")
+            console.log("sold CHD, arb swap performed")
+        }
+        else{
+            console.log("NO CHD left!!")
+        }
     }
     if(_arbSwap2){
         await baseToken.estimateGas.approve(charon.address,_10Dollars,_feeData)
         await baseToken.approve(charon.address,_10Dollars,_feeData)
         await sleep(5000)
-        console.log("approved for swap : ", web3.utils.fromWei(_10Dollars))
+        console.log("approved for base to CHD swap : ", web3.utils.fromWei(_10Dollars))
         await charon.estimateGas.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
         await charon.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
         await sleep(5000)
@@ -429,8 +455,8 @@ console.log("midPrice", midCHDPrice);
             await baseToken.approve(charon.address,_Camount,_feeData)
             await sleep(5000)
             console.log("approved for swap : ", _Camount)
-            await charon.estimateGas.swap(false,_Camount,0,web3.utils.toWei("999999"),_feeData)
-            await charon.swap(false,_Camount,0,web3.utils.toWei("999999"),_feeData)
+            await charon.estimateGas.swap(false,_Camount,0,web3.utils.toWei("9999999"),_feeData)
+            await charon.swap(false,_Camount,0,web3.utils.toWei("9999999"),_feeData)
             await sleep(5000)
             console.log("swap succesfully performed")
         }

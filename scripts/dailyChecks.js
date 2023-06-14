@@ -6,7 +6,7 @@ const hre = require("hardhat");
 const c = require("./contractAddys.js")
 require("dotenv").config();
 const web3 = require('web3');
-//npx hardhat run scripts/dailyChecks.js --network mumbai
+//npx hardhat run scripts/dailyChecks.js
 var myAddress = process.env.MAINNETKEY
 const fetch = require('node-fetch');
 const { buildPoseidon } = require("circomlibjs");
@@ -116,10 +116,17 @@ let mumCfc = await hre.ethers.getContractAt("feeContract/contracts/CFC.sol:CFC",
 let ethChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_CHD, sepSigner)
 let chiChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_CHD, chiSigner)
 let mumChd = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_CHD, mumSigner)
+let polBaseToken = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.POLYGON_BASETOKEN, mumSigner)
+let gnoBaseToken = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.GNOSIS_BASETOKEN, chiSigner)
+let opBaseToken = await hre.ethers.getContractAt("charonAMM/contracts/mocks/MockERC20.sol:MockERC20", c.ETHEREUM_BASETOKEN, sepSigner)
 
 console.log("Optimism GAS ", ethPrice * ethers.utils.formatEther(await oprovider.getBalance(myAddress)))
 console.log("Polygon GAS ", maticPrice * ethers.utils.formatEther(await pprovider.getBalance(myAddress)))
 console.log("Gnosis GAS ", xDaiPrice * ethers.utils.formatEther(await gprovider.getBalance(myAddress)))
+
+console.log("Optimism BASE ", ethPrice * ethers.utils.formatEther(await opBaseToken.balanceOf(myAddress)))
+console.log("Polygon BASE ", maticPrice * ethers.utils.formatEther(await polBaseToken.balanceOf(myAddress)))
+console.log("Gnosis BASE ", xDaiPrice * ethers.utils.formatEther(await gnoBaseToken.balanceOf(myAddress)))
 
 console.log( "my balance ETHEREUM pool tokens: ", ethers.utils.formatEther(await sepoliaCharon.balanceOf(myAddress)))
 console.log( "my balance POLYGON pool tokens: ", ethers.utils.formatEther(await mumbaiCharon.balanceOf(myAddress)))
@@ -160,10 +167,19 @@ let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / 
 let ETHCHDPrice = ethers.utils.formatEther(await sepoliaCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
 
+console.log("CFC endDates")
+let _f = await ethCfc.getFeePeriods()
+console.log(_f)
+console.log("CFC Optimism endDate", timeLeft(_f[_f.length -1] * 1000))
+_f = await mumCfc.getFeePeriods()
+console.log("CFC Polygon endDate", timeLeft(_f[_f.length -1] * 1000))
+_f = await chiCfc.getFeePeriods()
+console.log("CFC gnosisChain endDate", timeLeft(_f[_f.length -1] * 1000))
+
 console.log("Gnosis CHD Price : ", GNOCHDPrice)
 console.log("Ethereum CHD Price : ", ETHCHDPrice)
 console.log("Polygon CHD Price : ", POLCHDPrice)
-
+console.log("mid price: ", (GNOCHDPrice + ETHCHDPrice + POLCHDPrice) / 3)
 console.log("Auction info")
 console.log("top bid :", ethers.utils.formatEther(await cit.currentTopBid()))
 console.log("time left in auction :", timeLeft(await cit.endDate()* 1000))

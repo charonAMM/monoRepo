@@ -6,7 +6,7 @@ const hre = require("hardhat");
 const c = require("./testAddys.js")
 require("dotenv").config();
 const web3 = require('web3');
-//npx hardhat run scripts/dailyChecks.js --network mumbai
+//npx hardhat run scripts/testnet/testDailyChecks.js
 var myAddress = process.env.PUBLICKEY
 const fetch = require('node-fetch');
 const { buildPoseidon } = require("circomlibjs");
@@ -160,6 +160,14 @@ console.log("..all variables initialized correctly")
 let GNOCHDPrice = ethers.utils.formatEther(await chiadoCharon.getSpotPrice()) / xDaiPrice
 let ETHCHDPrice = ethers.utils.formatEther(await sepoliaCharon.getSpotPrice()) / ethPrice
 let POLCHDPrice = ethers.utils.formatEther(await mumbaiCharon.getSpotPrice()) / maticPrice
+
+console.log("CFC endDates")
+let _f = await ethCfc.getFeePeriods()
+console.log("CFC Sepolia endDate", timeLeft(_f[_f.length -1] * 1000))
+_f = await mumCfc.getFeePeriods()
+console.log("CFC Mumbai endDate", timeLeft(_f[_f.length -1] * 1000))
+_f = await chiCfc.getFeePeriods()
+console.log("CFC Chiado endDate", timeLeft(_f[_f.length -1] * 1000))
 
 console.log("CHIADO CHD Price : ", GNOCHDPrice)
 console.log("SEPOLIA CHD Price : ", ETHCHDPrice)

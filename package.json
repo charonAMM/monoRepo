@@ -40,6 +40,7 @@
     "incentiveToken": "github:charonAMM/incentiveToken",
     "registry": "github:charonAMM/registry",
     "usingtellor": "^5.0.0",
-    "web3": "^1.7.5"
+    "web3": "^1.7.5",
+    "snarkjs":"^0.7.0"
   }
 }

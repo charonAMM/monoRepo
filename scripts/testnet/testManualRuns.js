@@ -198,9 +198,9 @@ console.log("midPrice", midCHDPrice);
             console.log("new auction not started")
         )
         if(ETHCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (ETHCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (ETHCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(ETHCHDPrice > POLCHDPrice){
             if (_rand == 1){
@@ -238,9 +238,9 @@ console.log("midPrice", midCHDPrice);
         }
     }else if(_networkName == "mumbai"){
         if(POLCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (POLCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (POLCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(POLCHDPrice > ETHCHDPrice){
             if (_rand == 1){
@@ -278,9 +278,9 @@ console.log("midPrice", midCHDPrice);
         }
     }else if(_networkName == "chiado"){
         if(GNOCHDPrice > midCHDPrice * 1.05){
-            _arbSwap = true
-        }else if (GNOCHDPrice < midCHDPrice * .95){
             _arbSwap2 = true
+        }else if (GNOCHDPrice < midCHDPrice * .95){
+            _arbSwap = true
         }
         if(GNOCHDPrice > ETHCHDPrice){
             if (_rand == 1){
@@ -318,20 +318,22 @@ console.log("midPrice", midCHDPrice);
             }
         }
     }
+    let _arbAmount = web3.utils.toWei("1000")
     if(_arbSwap){
-        await chd.approve(charon.address,web3.utils.toWei("10"),_feeData)
+        await 
+        await chd.approve(charon.address,_arbAmount,_feeData)
         await sleep(5000)
-        console.log("approved for swap : ", web3.utils.toWei("10"))
-        await charon.swap(true,web3.utils.toWei("10"),0,web3.utils.toWei("999999"),_feeData)
+        console.log("approved for swap : ", _arbAmount)
+        await charon.swap(true,_arbAmount,0,web3.utils.toWei("999999"),_feeData)
         await sleep(5000)
         console.log("swap succesfully performed")
         console.log("sold CHD, arb swap performed")
     }
     if(_arbSwap2){
-        await baseToken.approve(charon.address,web3.utils.toWei("10"),_feeData)
+        await baseToken.approve(charon.address,_arbAmount,_feeData)
         await sleep(5000)
-        console.log("approved for swap : ", web3.utils.toWei("10"))
-        await charon.swap(false,web3.utils.toWei("10"),0,web3.utils.toWei("999999"),_feeData)
+        console.log("approved for swap : ", _arbAmount)
+        await charon.swap(false,_arbAmount,0,web3.utils.toWei("999999"),_feeData)
         await sleep(5000)
         console.log("swap succesfully performed")
         console.log("bought CHD, arb swap2 performed")
@@ -417,13 +419,13 @@ console.log("midPrice", midCHDPrice);
         console.log("swap succesfully performed")
     }
     if(_lp){
-        await chd.approve(charon.address,web3.utils.toWei("5000"),_feeData)
-        await sleep(5000)
-        await baseToken.approve(charon.address,web3.utils.toWei("1000"),_feeData)
-        await sleep(5000)
-        await charon.lpDeposit(web3.utils.toWei("0.5"),web3.utils.toWei("5000"),web3.utils.toWei("1000"),_feeData)
-        await sleep(5000)
-        console.log("successfully LPDeposit")
+        // await chd.approve(charon.address,web3.utils.toWei("5000"),_feeData)
+        // await sleep(5000)
+        // await baseToken.approve(charon.address,web3.utils.toWei("1000"),_feeData)
+        // await sleep(5000)
+        // await charon.lpDeposit(web3.utils.toWei("0.5"),web3.utils.toWei("5000"),web3.utils.toWei("1000"),_feeData)
+        // await sleep(5000)
+        // console.log("successfully LPDeposit")
     }
 }
 
