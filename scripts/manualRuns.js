@@ -391,7 +391,7 @@ console.log("midPrice", midCHDPrice);
             await baseToken.approve(charon.address,_Camount,_feeData)
             await sleep(6000)
             console.log("tokens approved")
-            let myKey = await new Keypair({privkey:process.env.PK, myHashFunc:poseidon})
+            let myKey = await new Keypair({privkey:process.env.MAINPK, myHashFunc:poseidon})
             let aliceDepositUtxo = new Utxo({ amount: _depositAmount,keypair:myKey, myHashFunc: poseidon, chainID:cChainIDs[0] })
             let inputData = await prepareTransaction({
                 charon:charon2,
