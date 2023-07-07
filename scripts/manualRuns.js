@@ -26,6 +26,10 @@ function poseidon(inputs){
     return builtPoseidon.F.toString(val)
 }
 
+function precise(x) {
+    return x.toPrecision(8);
+  }
+
 function poseidon2(a,b){
 return poseidon([a,b])
 }
@@ -34,6 +38,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+let myUTXOs = []
 async function getPrivateBalance(charonInstance, myKeypair,chainID){
     let filter = charonInstance.filters.NewCommitment()
     let events = await charonInstance.queryFilter(filter,0,"latest")
@@ -45,14 +50,17 @@ async function getPrivateBalance(charonInstance, myKeypair,chainID){
             thisUTXO = Utxo.decrypt(myKeypair, events[i].args._encryptedOutput, events[i].args._index)
             thisUTXO.chainID = chainID;
             //nowCreate nullifier
-            try{
-                myNullifier = thisUTXO.getNullifier(poseidon)
-                myNullifier = toFixedHex(myNullifier)
-                if(!await charonInstance.isSpent(myNullifier)){
-                    myAmount += parseInt(thisUTXO.amount);
+            if(thisUTXO.amount > 0 && toFixedHex(events[i].args._commitment) == toFixedHex(thisUTXO.getCommitment(poseidon))){
+                try{
+                    myNullifier = thisUTXO.getNullifier(poseidon)
+                    myNullifier = toFixedHex(myNullifier)
+                    if(!await charonInstance.isSpent(myNullifier)){
+                        myAmount += parseInt(thisUTXO.amount);
+                        myUTXOs.push(thisUTXO)
+                    }
+                }catch{
+                    console.log("nullifier error", i)
                 }
-            }catch{
-                console.log("nullifier error", i)
             }
         } catch{
             //console.log("not here")
@@ -117,6 +125,7 @@ console.log("midPrice", midCHDPrice);
     let _networkName = hre.network.name
     cit =  c.CIT
     let tellor, base, baseToken, charon, chd, cfc, cChainIDs;
+    let _thisChain = hre.network.config.chainId
     let _feeData = await hre.ethers.provider.getFeeData();
     delete _feeData.lastBaseFeePerGas
     delete _feeData.gasPrice
@@ -342,39 +351,66 @@ console.log("midPrice", midCHDPrice);
             }
         }
     }
-    _10Dollars = await web3.utils.toWei(String(_10Dollars), 'ether')
-    if(_arbSwap){
-        if(await chd.allowance(myAddress, charon.address) < _10Dollars){
-            await chd.estimateGas.approve(charon.address,_10Dollars,_feeData)
-            await chd.approve(charon.address,_10Dollars,_feeData)
-            await sleep(5000)
-            console.log("approved for chd to Base swap : ", web3.utils.fromWei(_10Dollars))
+
+
+    _10Dollars = await web3.utils.toWei(String(precise(_10Dollars)), 'ether')
+    if(ethers.utils.formatEther(await chd.balanceOf(myAddress)) - ethers.utils.formatEther(_10Dollars) < 0){
+        console.log("doing w")
+        let myKey = await new Keypair({privkey:process.env.MAINPK, myHashFunc:poseidon})
+        if(await getPrivateBalance(charon,myKey,_thisChain) > 0){
+            let inputData = await prepareTransaction({
+                charon:charon,
+                inputs:myUTXOs[0],
+                outputs: [],
+                recipient: myAddress,
+                privateChainID: _thisChain,
+                myHasherFunc: poseidon,
+                myHasherFunc2: poseidon2
+            })
+            let args = inputData.args
+            let extData = inputData.extData
+            await charon.estimateGas.transact(args,extData,_feeData);
+            await charon.transact(args,extData,_feeData);
+            console.log("withdraw for ", myUTXOs[0].amount)
         }
-        if(ethers.utils.formatEther(await chd.balanceOf(myAddress)) - ethers.utils.formatEther(_10Dollars) < 0){
+        else{
+            console.log("no private", await getPrivateBalance(charon,myKey,_thisChain))
+        }
+    }
+    if(_arbSwap){
+        if(await chd.allowance(myAddress, charon.address) - await chd.balanceOf(myAddress) < 0){
+            await chd.estimateGas.approve(charon.address,await chd.balanceOf(myAddress),_feeData)
+            await chd.approve(charon.address,await chd.balanceOf(myAddress),_feeData)
+            await sleep(5000)
+            console.log("approved for chd to Base swap : ", web3.utils.fromWei(await chd.balanceOf(myAddress)))
+        }
+        if(ethers.utils.formatEther(await chd.balanceOf(myAddress)) - 5 < 0){
             _10Dollars = await chd.balanceOf(myAddress)
             console.log("WARNING!! NEED MORE CHD")
         }
-        if(ethers.utils.formatEther(_10Dollars) > 1){
-            await charon.estimateGas.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
-            await charon.swap(true,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+        else{
+            await charon.estimateGas.swap(true,web3.utils.toWei('5'),0,web3.utils.toWei("9999999"),_feeData)
+            await charon.swap(true,web3.utils.toWei('5'),1,web3.utils.toWei("9999999"),_feeData)
             await sleep(5000)
             console.log("swap succesfully performed")
             console.log("sold CHD, arb swap performed")
-        }
-        else{
-            console.log("NO CHD left!!")
         }
     }
     if(_arbSwap2){
         await baseToken.estimateGas.approve(charon.address,_10Dollars,_feeData)
         await baseToken.approve(charon.address,_10Dollars,_feeData)
         await sleep(5000)
-        console.log("approved for base to CHD swap : ", web3.utils.fromWei(_10Dollars))
-        await charon.estimateGas.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
-        await charon.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
-        await sleep(5000)
-        console.log("swap succesfully performed")
-        console.log("bought CHD, arb swap2 performed")
+        if(ethers.utils.formatEther(await baseToken.balanceOf(myAddress)) - ethers.utils.formatEther(_10Dollars) < 0){
+            console.log("WARNING!! NEED MORE BASE TOKEN")
+        }
+        else{
+            console.log("approved for base to CHD swap : ", web3.utils.fromWei(_10Dollars))
+            await charon.estimateGas.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+            await charon.swap(false,_10Dollars,0,web3.utils.toWei("999999"),_feeData)
+            await sleep(5000)
+            console.log("swap succesfully performed")
+            console.log("bought CHD, arb swap2 performed")
+        }
     }
     if(_deposit){
         let charon2 = await hre.ethers.getContractAt("charonAMM/contracts/Charon.sol:Charon", cAddys[0])
@@ -427,7 +463,7 @@ console.log("midPrice", midCHDPrice);
             await baseToken.approve(charon.address,_Camount,_feeData)
             await sleep(5000)
             console.log("tokens approved")
-            let myKey = new Keypair({ privkey: process.env.PK, myHashFunc: poseidon })
+            let myKey = new Keypair({ privkey: process.env.MAINPK, myHashFunc: poseidon })
             let aliceDepositUtxo = new Utxo({ amount: _depositAmount,keypair:myKey, myHashFunc: poseidon, chainID:cChainIDs[1] })
             let inputData = await prepareTransaction({
                 charon:charon2,
@@ -450,13 +486,12 @@ console.log("midPrice", midCHDPrice);
         }
     }
     if(_swap){
-        let _Camount = web3.utils.toWei("1");
-        if(await baseToken.balanceOf(myAddress) > _Camount){
-            await baseToken.approve(charon.address,_Camount,_feeData)
+        if(await baseToken.balanceOf(myAddress) > _10Dollars){
+            await baseToken.approve(charon.address,_10Dollars,_feeData)
             await sleep(5000)
-            console.log("approved for swap : ", _Camount)
-            await charon.estimateGas.swap(false,_Camount,0,web3.utils.toWei("9999999"),_feeData)
-            await charon.swap(false,_Camount,0,web3.utils.toWei("9999999"),_feeData)
+            console.log("approved for swap : ", _10Dollars)
+            await charon.estimateGas.swap(false,_10Dollars,0,web3.utils.toWei("9999999"),_feeData)
+            await charon.swap(false,_10Dollars,0,web3.utils.toWei("9999999"),_feeData)
             await sleep(5000)
             console.log("swap succesfully performed")
         }

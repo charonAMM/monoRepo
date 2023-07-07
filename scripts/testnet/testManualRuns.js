@@ -35,6 +35,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+let myUTXOs = []
 async function getPrivateBalance(charonInstance, myKeypair,chainID){
     let filter = charonInstance.filters.NewCommitment()
     let events = await charonInstance.queryFilter(filter,0,"latest")
@@ -46,14 +47,17 @@ async function getPrivateBalance(charonInstance, myKeypair,chainID){
             thisUTXO = Utxo.decrypt(myKeypair, events[i].args._encryptedOutput, events[i].args._index)
             thisUTXO.chainID = chainID;
             //nowCreate nullifier
-            try{
-                myNullifier = thisUTXO.getNullifier(poseidon)
-                myNullifier = toFixedHex(myNullifier)
-                if(!await charonInstance.isSpent(myNullifier)){
-                    myAmount += parseInt(thisUTXO.amount);
+            if(thisUTXO.amount > 0 && toFixedHex(events[i].args._commitment) == toFixedHex(thisUTXO.getCommitment(poseidon))){
+                try{
+                    myNullifier = thisUTXO.getNullifier(poseidon)
+                    myNullifier = toFixedHex(myNullifier)
+                    if(!await charonInstance.isSpent(myNullifier)){
+                        myAmount += parseInt(thisUTXO.amount);
+                        myUTXOs.push(thisUTXO)
+                    }
+                }catch{
+                    console.log("nullifier error", i)
                 }
-            }catch{
-                console.log("nullifier error", i)
             }
         } catch{
             //console.log("not here")
@@ -316,6 +320,30 @@ console.log("midPrice", midCHDPrice);
             else{
                 _lpCHD = true
             }
+        }
+    }
+    let _10Dollars = ethers.utils.parseEther("1")
+    if(ethers.utils.formatEther(await chd.balanceOf(myAddress)) - ethers.utils.formatEther(_10Dollars) < 0){
+        console.log("doing w")
+        let myKey = await new Keypair({privkey:process.env.PK, myHashFunc:poseidon})
+        if(await getPrivateBalance(charon,myKey,_thisChain) > 0){
+            let inputData = await prepareTransaction({
+                charon:charon,
+                inputs:myUTXOs[0],
+                outputs: [],
+                recipient: myAddress,
+                privateChainID: _thisChain,
+                myHasherFunc: poseidon,
+                myHasherFunc2: poseidon2
+            })
+            let args = inputData.args
+            let extData = inputData.extData
+            await charon.estimateGas.transact(args,extData,_feeData);
+            await charon.transact(args,extData,_feeData);
+            console.log("withdraw for ", myUTXOs[0].amount)
+        }
+        else{
+            console.log("no private", await getPrivateBalance(charon,myKey,_thisChain))
         }
     }
     let _arbAmount = web3.utils.toWei("1000")

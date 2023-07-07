@@ -65,15 +65,16 @@ async function tellorSubmits(_charon1, _charon2, _tellor, _chain2, _index, _trb,
             if(Date.now()/1000 - _ts > 86400/2){
                 _encoded = await ethers.utils.AbiCoder.prototype.encode(['uint256'],[toSubmit[i]]);
                 try{
+                    console.log(_index, _encoded)
                     await _charon1.estimateGas.oracleDeposit(_index,_encoded,_feeData);
                     await _charon1.oracleDeposit(_index,_encoded,_feeData);
+                    await sleep(5000)
+                    console.log("oracleDeposit for id :", toSubmit[i], " chainID", _chain2)
                 }
                 catch{
                     console.log("failed at oracleDeposit, ID", toSubmit[i], " chainID", _chain2)
                     failures += 1
                 }
-                await sleep(5000)
-                console.log("oracleDeposit for id :", toSubmit[i], " chainID", _chain2)
             }else{
                 console.log("need more time for Id: ",toSubmit[i], " chainID", _chain2)
             }

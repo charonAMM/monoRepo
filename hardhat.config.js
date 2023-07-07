@@ -96,20 +96,20 @@ const config = {
     optimism: {
       url: `${process.env.NODE_URL_OPTIMISM}`,
       accounts: [process.env.MAINPK],
-      gas: 9000000,
+      gas: 2000000,
       chainId:10
     } ,
     polygon: {
       url: `${process.env.NODE_URL_POLYGON}`,
       accounts: [process.env.MAINPK],
-      gas: 9000000,
+      gas: 2000000,
       gasPrice: 175000000000,
       chainId: 137
     } ,
     gnosis: {
       url: `${process.env.NODE_URL_GNOSIS}`,
       accounts: [process.env.MAINPK],
-      gas: 9000000,
+      gas: 2000000,
       chainId: 100
     } ,
   },
